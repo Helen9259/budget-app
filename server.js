@@ -174,6 +174,72 @@ app.delete('/api/transactions/:id', requireAuth, async (req, res) => {
   res.json({ message: '삭제되었습니다.' });
 });
 
+// 통계 API
+app.get('/api/stats', requireAuth, async (req, res) => {
+  const { year, month, type = 'expense' } = req.query;
+  if (!year || !month) return res.status(400).json({ error: 'year, month 필요' });
+
+  const pad = n => String(n).padStart(2, '0');
+  const startDate = `${year}-${pad(month)}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  const pd = new Date(year, month - 2, 1);
+  const py = pd.getFullYear(), pm = pd.getMonth() + 1;
+  const pStart = `${py}-${pad(pm)}-01`;
+  const pEnd = new Date(py, pm, 0).toISOString().split('T')[0];
+
+  const [{ data: curr }, { data: prev }] = await Promise.all([
+    supabase.from('transactions').select('*').eq('user_id', req.user.id).eq('type', type).gte('date', startDate).lte('date', endDate),
+    supabase.from('transactions').select('*').eq('user_id', req.user.id).eq('type', type).gte('date', pStart).lte('date', pEnd),
+  ]);
+
+  const EXCLUDED = ['저축', '투자'];
+  const filter = type === 'expense' ? t => !EXCLUDED.includes(t.category) : () => true;
+  const currF = (curr || []).filter(filter);
+  const prevF = (prev || []).filter(filter);
+
+  const catMap = {};
+  currF.forEach(t => {
+    if (!catMap[t.category]) catMap[t.category] = { total: 0, subs: {} };
+    catMap[t.category].total += t.amount;
+    const s = t.subcategory || '기타';
+    catMap[t.category].subs[s] = (catMap[t.category].subs[s] || 0) + t.amount;
+  });
+
+  const prevCat = {};
+  prevF.forEach(t => { prevCat[t.category] = (prevCat[t.category] || 0) + t.amount; });
+
+  const total = currF.reduce((s, t) => s + t.amount, 0);
+  const prevTotal = prevF.reduce((s, t) => s + t.amount, 0);
+
+  const categories = Object.entries(catMap)
+    .map(([name, d]) => ({
+      name, total: d.total,
+      pct: total > 0 ? Math.round(d.total / total * 100) : 0,
+      prev_total: prevCat[name] || 0,
+      subs: Object.entries(d.subs).sort((a, b) => b[1] - a[1]).map(([name, amount]) => ({ name, amount })),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  res.json({ total, prev_total: prevTotal, categories });
+});
+
+// 검색 API (/:id보다 먼저)
+app.get('/api/transactions/search', requireAuth, async (req, res) => {
+  const { q, date_from, date_to, category, payment, amount_min, amount_max } = req.query;
+  let query = supabase.from('transactions').select('*').eq('user_id', req.user.id);
+  if (q) query = query.ilike('content', `%${q}%`);
+  if (date_from) query = query.gte('date', date_from);
+  if (date_to) query = query.lte('date', date_to);
+  if (category) query = query.eq('category', category);
+  if (payment) query = query.eq('payment_method', payment);
+  if (amount_min) query = query.gte('amount', parseInt(amount_min));
+  if (amount_max) query = query.lte('amount', parseInt(amount_max));
+  query = query.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(300);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 app.get('/api/transactions/export', requireAuth, async (req, res) => {
   const { year, month } = req.query;
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;

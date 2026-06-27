@@ -289,6 +289,83 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .coming-soon-sub { font-size: 13px; }
 
 /* =============================================
+   통계 화면
+   ============================================= */
+.stats-panel { position: fixed; inset: 0; background: var(--bg); z-index: 150; display: none; flex-direction: column; }
+.stats-panel.visible { display: flex; }
+.panel-header { background: var(--surface); padding: 0 16px; height: var(--header-h); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.panel-back { width: 36px; height: 36px; border-radius: 10px; background: var(--surface2); color: var(--text2); font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.panel-header-title { font-size: 17px; font-weight: 700; flex: 1; }
+.stats-body { flex: 1; overflow-y: auto; padding-bottom: 40px; }
+.stats-month-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 14px 16px 8px; }
+.stats-type-toggle { display: flex; background: var(--surface2); border-radius: 12px; padding: 4px; margin: 0 16px 4px; }
+.stats-type-btn { flex: 1; padding: 8px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--text3); background: transparent; transition: all .2s; }
+.stats-type-btn.active-expense { background: var(--expense-color); color: #fff; }
+.stats-type-btn.active-income { background: var(--income-color); color: #fff; }
+.stats-total { text-align: center; padding: 6px 16px 0; }
+.stats-total-label { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
+.stats-total-amt { font-size: 30px; font-weight: 700; }
+.stats-total-amt.expense { color: var(--expense-color); }
+.stats-total-amt.income { color: var(--income-color); }
+.stats-total-prev { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.stats-total-prev span { font-weight: 600; }
+.stats-total-prev span.up { color: var(--expense-color); }
+.stats-total-prev span.down { color: #66bb6a; }
+.donut-wrap { display: flex; justify-content: center; padding: 4px 0 0; position: relative; }
+.donut-svg { width: 260px; height: 260px; overflow: visible; }
+.cat-rank-list { padding: 0 16px 8px; }
+.cat-rank-item { border-radius: 12px; background: var(--surface); margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow); }
+.cat-rank-header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; cursor: pointer; }
+.cat-rank-pct { font-size: 12px; font-weight: 700; color: var(--text2); width: 32px; flex-shrink: 0; }
+.cat-rank-name { flex: 1; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.cat-rank-bar-wrap { width: 72px; flex-shrink: 0; }
+.cat-rank-bar-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.cat-rank-bar-fill { height: 100%; border-radius: 3px; }
+.cat-rank-amount { font-size: 13px; font-weight: 700; flex-shrink: 0; text-align: right; min-width: 64px; }
+.cat-rank-chevron { color: var(--text3); font-size: 11px; flex-shrink: 0; transition: transform .2s; }
+.cat-rank-chevron.open { transform: rotate(180deg); }
+.cat-rank-body { padding: 0 14px 12px; border-top: 1px solid var(--border); display: none; }
+.cat-rank-body.open { display: block; }
+.cat-rank-prev { font-size: 12px; color: var(--text3); margin: 8px 0 6px; }
+.cat-rank-prev .diff-up { color: var(--expense-color); font-weight: 600; }
+.cat-rank-prev .diff-down { color: #66bb6a; font-weight: 600; }
+.cat-sub-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.cat-sub-item { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.cat-sub-item:last-child { border-bottom: none; }
+.cat-sub-name { color: var(--text2); }
+.cat-sub-amount { font-weight: 600; color: var(--text); }
+.cat-rank-link { font-size: 12px; color: var(--primary-dark); font-weight: 600; display: block; margin-top: 4px; }
+
+/* =============================================
+   검색 화면
+   ============================================= */
+.search-panel { position: fixed; inset: 0; background: var(--bg); z-index: 150; display: none; flex-direction: column; }
+.search-panel.visible { display: flex; }
+.search-header { background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; padding: 10px 12px 0; }
+.search-top-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.search-input-wrap { flex: 1; position: relative; }
+.search-input { border-radius: 20px; padding: 9px 32px 9px 14px; font-size: 14px; width: 100%; }
+.search-clear-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; color: var(--text3); font-size: 14px; display: none; padding: 0; }
+.search-filters { padding: 0 2px 10px; display: flex; flex-direction: column; gap: 8px; }
+.search-filter-row { display: flex; gap: 6px; align-items: flex-start; }
+.search-filter-lbl { font-size: 11px; color: var(--text2); font-weight: 600; width: 44px; flex-shrink: 0; padding-top: 5px; }
+.search-chips { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.sch-chip { padding: 4px 10px; border-radius: 14px; font-size: 12px; font-weight: 500; background: var(--surface2); color: var(--text2); border: 1.5px solid transparent; transition: all .15s; }
+.sch-chip.on { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
+.search-range-row { display: flex; gap: 6px; align-items: center; flex: 1; }
+.search-range-row input { padding: 6px 8px; font-size: 12px; }
+.search-range-sep { font-size: 12px; color: var(--text3); flex-shrink: 0; }
+.search-body { flex: 1; overflow-y: auto; padding: 10px 12px 32px; }
+.search-result-info { font-size: 12px; color: var(--text2); margin-bottom: 8px; padding: 0 2px; }
+.search-date-group { margin-bottom: 6px; }
+.search-date-label { font-size: 11px; color: var(--text3); font-weight: 600; padding: 6px 2px 3px; }
+.search-empty { text-align: center; color: var(--text3); padding: 56px 20px; }
+.search-empty-icon { font-size: 48px; margin-bottom: 8px; }
+.search-empty-text { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.search-empty-sub { font-size: 12px; }
+
+/* =============================================
    확인 팝업 & 토스트
    ============================================= */
 .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -608,6 +685,81 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
   </div>
 </div>
 
+<!-- =============================================
+     통계 화면
+     ============================================= -->
+<div class="stats-panel" id="stats-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeStats()">←</button>
+    <span class="panel-header-title">통계</span>
+  </div>
+  <div class="stats-body">
+    <div class="stats-month-nav">
+      <button class="month-nav-btn" onclick="statsChangeMonth(-1)">←</button>
+      <span class="month-label" id="stats-month-label">2026.06</span>
+      <button class="month-nav-btn" onclick="statsChangeMonth(1)">→</button>
+    </div>
+    <div class="stats-type-toggle">
+      <button class="stats-type-btn active-expense" id="stats-btn-expense" onclick="setStatsType('expense')">지출</button>
+      <button class="stats-type-btn" id="stats-btn-income" onclick="setStatsType('income')">수입</button>
+    </div>
+    <div class="stats-total">
+      <div class="stats-total-label" id="stats-total-label">이번 달 지출</div>
+      <div class="stats-total-amt expense" id="stats-total-amt">₩0</div>
+      <div class="stats-total-prev" id="stats-total-prev"></div>
+    </div>
+    <div class="donut-wrap">
+      <svg class="donut-svg" id="donut-svg" viewBox="0 0 260 260"></svg>
+    </div>
+    <div class="cat-rank-list" id="cat-rank-list"></div>
+  </div>
+</div>
+
+<!-- =============================================
+     검색 화면
+     ============================================= -->
+<div class="search-panel" id="search-panel">
+  <div class="search-header">
+    <div class="search-top-row">
+      <button class="panel-back" onclick="closeSearch()">←</button>
+      <div class="search-input-wrap">
+        <input class="search-input" id="search-q" type="text" placeholder="내용 검색..." oninput="onSearchInput()">
+        <button class="search-clear-btn" id="search-clear" onclick="clearSearch()">✕</button>
+      </div>
+    </div>
+    <div class="search-filters">
+      <div class="search-filter-row">
+        <span class="search-filter-lbl">날짜</span>
+        <div class="search-range-row">
+          <input type="date" id="sch-date-from" onchange="doSearch()">
+          <span class="search-range-sep">~</span>
+          <input type="date" id="sch-date-to" onchange="doSearch()">
+        </div>
+      </div>
+      <div class="search-filter-row">
+        <span class="search-filter-lbl">카테고리</span>
+        <div class="search-chips" id="sch-cat-chips"></div>
+      </div>
+      <div class="search-filter-row">
+        <span class="search-filter-lbl">지출수단</span>
+        <div class="search-chips" id="sch-pay-chips"></div>
+      </div>
+      <div class="search-filter-row">
+        <span class="search-filter-lbl">금액</span>
+        <div class="search-range-row">
+          <input type="text" id="sch-amt-min" placeholder="최소" inputmode="numeric" oninput="formatAmount(this)" onchange="doSearch()">
+          <span class="search-range-sep">~</span>
+          <input type="text" id="sch-amt-max" placeholder="최대" inputmode="numeric" oninput="formatAmount(this)" onchange="doSearch()">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="search-body">
+    <div class="search-result-info" id="sch-result-info"></div>
+    <div id="sch-results"></div>
+  </div>
+</div>
+
 <!-- 삭제 확인 -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
@@ -793,6 +945,368 @@ function showTab(tab) {
   document.getElementById('header-left-btn').style.display = showIcons ? '' : 'none';
   document.getElementById('header-right-btn').style.display = showIcons ? '' : 'none';
   if (tab === 'settings') renderCardListSettings();
+}
+
+// =============================================
+// 통계 화면
+// =============================================
+const statsState = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  type: 'expense',
+  data: null,
+};
+
+function openStats() {
+  statsState.year = state.year;
+  statsState.month = state.month;
+  document.getElementById('stats-month-label').textContent = monthStr(statsState.year, statsState.month);
+  document.getElementById('stats-panel').classList.add('visible');
+  setStatsType('expense');
+}
+function closeStats() {
+  document.getElementById('stats-panel').classList.remove('visible');
+}
+
+function statsChangeMonth(d) {
+  statsState.month += d;
+  if (statsState.month > 12) { statsState.month = 1; statsState.year++; }
+  if (statsState.month < 1) { statsState.month = 12; statsState.year--; }
+  document.getElementById('stats-month-label').textContent = monthStr(statsState.year, statsState.month);
+  loadStats();
+}
+
+function setStatsType(type) {
+  statsState.type = type;
+  document.getElementById('stats-btn-expense').className = 'stats-type-btn' + (type === 'expense' ? ' active-expense' : '');
+  document.getElementById('stats-btn-income').className = 'stats-type-btn' + (type === 'income' ? ' active-income' : '');
+  loadStats();
+}
+
+async function loadStats() {
+  try {
+    const data = await api('GET', `/api/stats?year=${statsState.year}&month=${statsState.month}&type=${statsState.type}`);
+    statsState.data = data;
+    renderStats(data);
+  } catch (e) { showToast('통계를 불러오지 못했습니다.'); }
+}
+
+function renderStats(data) {
+  const isExp = statsState.type === 'expense';
+  const label = isExp ? '이번 달 지출' : '이번 달 수입';
+  document.getElementById('stats-total-label').textContent = label;
+  const amtEl = document.getElementById('stats-total-amt');
+  amtEl.textContent = fmt(data.total);
+  amtEl.className = 'stats-total-amt ' + (isExp ? 'expense' : 'income');
+
+  const prevEl = document.getElementById('stats-total-prev');
+  if (data.prev_total > 0 || data.total > 0) {
+    const diff = data.total - data.prev_total;
+    const sign = diff >= 0 ? '+' : '';
+    const cls = diff > 0 ? (isExp ? 'diff-up' : 'diff-down') : (diff < 0 ? (isExp ? 'diff-down' : 'diff-up') : '');
+    prevEl.innerHTML = `지난달 대비 <span class="${cls}">${sign}${Math.abs(diff).toLocaleString('ko-KR')}원</span>`;
+  } else {
+    prevEl.textContent = '';
+  }
+
+  renderDonut(data.categories);
+  renderCatRank(data.categories, data.total);
+}
+
+function polarToXY(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function renderDonut(cats) {
+  const svg = document.getElementById('donut-svg');
+  svg.innerHTML = '';
+  const cx = 130, cy = 130, outerR = 90, innerR = 58, labelR = 110;
+
+  if (!cats || cats.length === 0) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', cx); circle.setAttribute('cy', cy);
+    circle.setAttribute('r', (outerR + innerR) / 2);
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', 'var(--border)');
+    circle.setAttribute('stroke-width', outerR - innerR);
+    svg.appendChild(circle);
+    return;
+  }
+
+  const total = cats.reduce((s, c) => s + c.total, 0);
+  if (total === 0) return;
+
+  const GAP = 2; // degree gap between segments
+  let startDeg = 0;
+
+  cats.forEach((cat, i) => {
+    const sweep = (cat.total / total) * (360 - GAP * cats.length);
+    const endDeg = startDeg + sweep;
+    const midDeg = (startDeg + endDeg) / 2;
+
+    // Draw arc segment
+    const o1 = polarToXY(cx, cy, outerR, startDeg + GAP / 2);
+    const o2 = polarToXY(cx, cy, outerR, endDeg - GAP / 2);
+    const i1 = polarToXY(cx, cy, innerR, endDeg - GAP / 2);
+    const i2 = polarToXY(cx, cy, innerR, startDeg + GAP / 2);
+    const large = sweep > 180 ? 1 : 0;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const d = `M ${o1.x.toFixed(2)} ${o1.y.toFixed(2)} A ${outerR} ${outerR} 0 ${large} 1 ${o2.x.toFixed(2)} ${o2.y.toFixed(2)} L ${i1.x.toFixed(2)} ${i1.y.toFixed(2)} A ${innerR} ${innerR} 0 ${large} 0 ${i2.x.toFixed(2)} ${i2.y.toFixed(2)} Z`;
+    path.setAttribute('d', d);
+    path.setAttribute('fill', getCatColor(cat.name));
+    svg.appendChild(path);
+
+    // Label line + icon outside donut (only if segment is large enough)
+    if (sweep >= 18) {
+      const innerPt = polarToXY(cx, cy, outerR + 4, midDeg);
+      const outerPt = polarToXY(cx, cy, labelR + 2, midDeg);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', innerPt.x.toFixed(2)); line.setAttribute('y1', innerPt.y.toFixed(2));
+      line.setAttribute('x2', outerPt.x.toFixed(2)); line.setAttribute('y2', outerPt.y.toFixed(2));
+      line.setAttribute('stroke', getCatColor(cat.name)); line.setAttribute('stroke-width', '1.5');
+      svg.appendChild(line);
+
+      const txtPt = polarToXY(cx, cy, labelR + 14, midDeg);
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', txtPt.x.toFixed(2)); txt.setAttribute('y', txtPt.y.toFixed(2));
+      txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'middle');
+      txt.setAttribute('font-size', '13'); txt.setAttribute('font-family', 'Noto Sans KR, sans-serif');
+      txt.textContent = CAT_EMOJI[cat.name] || '●';
+      svg.appendChild(txt);
+    }
+
+    startDeg = endDeg + GAP;
+  });
+
+  // Center text
+  const centerTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  centerTxt.setAttribute('x', cx); centerTxt.setAttribute('y', cy - 6);
+  centerTxt.setAttribute('text-anchor', 'middle'); centerTxt.setAttribute('font-size', '11');
+  centerTxt.setAttribute('fill', 'var(--text3)'); centerTxt.setAttribute('font-family', 'Noto Sans KR, sans-serif');
+  centerTxt.textContent = cats.length + '개 카테고리';
+  svg.appendChild(centerTxt);
+  const centerAmt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  centerAmt.setAttribute('x', cx); centerAmt.setAttribute('y', cy + 12);
+  centerAmt.setAttribute('text-anchor', 'middle'); centerAmt.setAttribute('font-size', '13');
+  centerAmt.setAttribute('font-weight', '700'); centerAmt.setAttribute('fill', 'var(--text)');
+  centerAmt.setAttribute('font-family', 'Noto Sans KR, sans-serif');
+  const tot = cats.reduce((s, c) => s + c.total, 0);
+  centerAmt.textContent = tot >= 10000 ? (Math.floor(tot / 10000)) + '만' : tot.toLocaleString('ko-KR');
+  svg.appendChild(centerAmt);
+}
+
+const CAT_EMOJI = {
+  '식비': '🍽️', '교통': '🚌', '주거': '🏠', '쇼핑': '🛍️', '의료·건강': '💊',
+  '문화·여가': '🎬', '교육': '📚', '경조사': '🎁', '저축': '💰', '투자': '📈',
+  '기타 지출': '📦', '근로소득': '💼', '금융소득': '🏦', '기타 수입': '💵',
+};
+
+function renderCatRank(cats, total) {
+  const el = document.getElementById('cat-rank-list');
+  el.innerHTML = '';
+  if (!cats || cats.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:32px 0;font-size:13px">내역이 없어요</div>';
+    return;
+  }
+  cats.forEach((cat, idx) => {
+    const color = getCatColor(cat.name);
+    const barW = total > 0 ? Math.round(cat.total / total * 100) : 0;
+    const div = document.createElement('div');
+    div.className = 'cat-rank-item';
+    div.innerHTML = `
+      <div class="cat-rank-header" onclick="toggleCatAccordion(this)">
+        <span class="cat-rank-pct">${cat.pct}%</span>
+        <span class="cat-rank-name"><span class="cat-color-dot" style="background:${color}"></span>${escHtml(cat.name)}</span>
+        <div class="cat-rank-bar-wrap"><div class="cat-rank-bar-track"><div class="cat-rank-bar-fill" style="width:${barW}%;background:${color}"></div></div></div>
+        <span class="cat-rank-amount">${fmt(cat.total)}</span>
+        <span class="cat-rank-chevron">▾</span>
+      </div>
+      <div class="cat-rank-body">
+        ${renderCatPrev(cat)}
+        <div class="cat-sub-list">${cat.subs.map(s => `<div class="cat-sub-item"><span class="cat-sub-name">${escHtml(s.name)}</span><span class="cat-sub-amount">${fmt(s.amount)}</span></div>`).join('')}</div>
+        <a class="cat-rank-link" href="#" onclick="goToSearchByCat('${escHtml(cat.name)}');return false;">이 카테고리 내역 보기 →</a>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+function renderCatPrev(cat) {
+  if (cat.prev_total === 0 && cat.total === 0) return '';
+  const diff = cat.total - cat.prev_total;
+  if (diff === 0) return '<div class="cat-rank-prev">지난달과 동일</div>';
+  const sign = diff > 0 ? '+' : '';
+  const cls = diff > 0 ? 'diff-up' : 'diff-down';
+  return `<div class="cat-rank-prev">지난달보다 <span class="${cls}">${sign}${Math.abs(diff).toLocaleString('ko-KR')}원</span></div>`;
+}
+
+function toggleCatAccordion(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.cat-rank-chevron');
+  const isOpen = body.classList.contains('open');
+  // close all
+  document.querySelectorAll('.cat-rank-body.open').forEach(b => {
+    b.classList.remove('open');
+    b.previousElementSibling.querySelector('.cat-rank-chevron').classList.remove('open');
+  });
+  if (!isOpen) {
+    body.classList.add('open');
+    chevron.classList.add('open');
+  }
+}
+
+function goToSearchByCat(catName) {
+  closeStats();
+  openSearch();
+  // pre-set category filter
+  schState.cat = catName;
+  renderSchCatChips();
+  doSearch();
+}
+
+// =============================================
+// 검색 화면
+// =============================================
+const schState = { cat: '', payment: '' };
+let _schDebounce = null;
+
+function openSearch() {
+  document.getElementById('search-panel').classList.add('visible');
+  renderSchCatChips();
+  renderSchPayChips();
+  document.getElementById('search-q').focus();
+  doSearch();
+}
+function closeSearch() {
+  document.getElementById('search-panel').classList.remove('visible');
+}
+
+function clearSearch() {
+  document.getElementById('search-q').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  doSearch();
+}
+
+function onSearchInput() {
+  const q = document.getElementById('search-q').value;
+  document.getElementById('search-clear').style.display = q ? '' : 'none';
+  clearTimeout(_schDebounce);
+  _schDebounce = setTimeout(doSearch, 300);
+}
+
+function renderSchCatChips() {
+  const el = document.getElementById('sch-cat-chips');
+  el.innerHTML = '';
+  const all = [...CATEGORIES.expense, ...CATEGORIES.income];
+  all.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'sch-chip' + (schState.cat === c.name ? ' on' : '');
+    btn.textContent = c.name;
+    btn.onclick = () => { schState.cat = schState.cat === c.name ? '' : c.name; renderSchCatChips(); doSearch(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderSchPayChips() {
+  const el = document.getElementById('sch-pay-chips');
+  el.innerHTML = '';
+  PAYMENT_METHODS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'sch-chip' + (schState.payment === p ? ' on' : '');
+    btn.textContent = p;
+    btn.onclick = () => { schState.payment = schState.payment === p ? '' : p; renderSchPayChips(); doSearch(); };
+    el.appendChild(btn);
+  });
+}
+
+async function doSearch() {
+  const q = document.getElementById('search-q').value.trim();
+  const dateFrom = document.getElementById('sch-date-from').value;
+  const dateTo = document.getElementById('sch-date-to').value;
+  const amtMin = parseAmt(document.getElementById('sch-amt-min').value);
+  const amtMax = parseAmt(document.getElementById('sch-amt-max').value);
+
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  if (schState.cat) params.set('category', schState.cat);
+  if (schState.payment) params.set('payment', schState.payment);
+  if (amtMin) params.set('amount_min', amtMin);
+  if (amtMax) params.set('amount_max', amtMax);
+
+  const hasFilter = q || dateFrom || dateTo || schState.cat || schState.payment || amtMin || amtMax;
+  if (!hasFilter) {
+    document.getElementById('sch-result-info').textContent = '검색어나 필터를 설정하세요.';
+    document.getElementById('sch-results').innerHTML = `<div class="search-empty"><div class="search-empty-icon">🔍</div><div class="search-empty-text">검색해보세요</div><div class="search-empty-sub">내용, 카테고리, 날짜 등으로 필터링</div></div>`;
+    return;
+  }
+
+  try {
+    const data = await api('GET', `/api/transactions/search?${params}`);
+    renderSearchResults(data);
+  } catch { showToast('검색 실패'); }
+}
+
+function renderSearchResults(txs) {
+  const infoEl = document.getElementById('sch-result-info');
+  const resultEl = document.getElementById('sch-results');
+  infoEl.textContent = `검색 결과 ${txs.length}건`;
+
+  if (txs.length === 0) {
+    resultEl.innerHTML = `<div class="search-empty"><div class="search-empty-icon">😅</div><div class="search-empty-text">검색 결과가 없어요</div><div class="search-empty-sub">다른 검색어나 필터를 사용해보세요</div></div>`;
+    return;
+  }
+
+  // group by date
+  const groups = {};
+  txs.forEach(t => {
+    if (!groups[t.date]) groups[t.date] = [];
+    groups[t.date].push(t);
+  });
+
+  resultEl.innerHTML = '';
+  Object.entries(groups).forEach(([date, list]) => {
+    const grp = document.createElement('div');
+    grp.className = 'search-date-group';
+    const [y, m, d] = date.split('-');
+    grp.innerHTML = `<div class="search-date-label">${y}년 ${parseInt(m)}월 ${parseInt(d)}일</div>`;
+    const txList = document.createElement('div');
+    txList.className = 'tx-list';
+    list.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'tx-item';
+      const color = getCatColor(t.category);
+      el.innerHTML = `
+        <div class="tx-cat-dot" style="background:${color}"></div>
+        <div class="tx-info">
+          <div class="tx-content">${escHtml(t.content)}</div>
+          <div class="tx-sub">${escHtml(t.category)}${t.subcategory ? ' · ' + escHtml(t.subcategory) : ''}${t.payment_method ? ' · ' + escHtml(t.payment_method) : ''}</div>
+        </div>
+        <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
+        <div class="tx-actions">
+          <button class="tx-act-btn" onclick="openEditFromSearch('${t.id}')">✏️</button>
+        </div>`;
+      txList.appendChild(el);
+    });
+    grp.appendChild(txList);
+    resultEl.appendChild(grp);
+  });
+}
+
+async function openEditFromSearch(id) {
+  // load the transaction's month if needed
+  try {
+    const res = await api('GET', `/api/transactions/search?q=`);
+  } catch {}
+  // fetch all transactions for that month by temporarily searching
+  closeSearch();
+  // find in current state first
+  let t = state.transactions.find(x => x.id === id);
+  if (t) { openEditForm(id); return; }
+  // if not in current month, load that month
+  showToast('해당 내역을 열려면 해당 월로 이동하세요.');
 }
 
 function showSubTab(tab) {
@@ -1472,6 +1986,8 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
   document.getElementById('month-label').textContent = monthStr(state.year, state.month);
   renderPaymentList();
   renderColorPicker();
+  document.getElementById('header-left-btn').onclick = openStats;
+  document.getElementById('header-right-btn').onclick = openSearch;
   if (state.token && state.user) enterApp();
   ['login-email', 'login-pw'].forEach(id =>
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
