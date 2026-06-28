@@ -281,6 +281,50 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .color-option.selected { border-color: var(--text); transform: scale(1.15); }
 
 /* =============================================
+   카테고리 관리 패널
+   ============================================= */
+.cat-mgmt-panel { position: fixed; inset: 0; background: var(--bg); z-index: 150; display: none; flex-direction: column; }
+.cat-mgmt-panel.visible { display: flex; }
+.panel-header { background: var(--surface); padding: 0 16px; height: var(--header-h); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.panel-title { font-size: 17px; font-weight: 700; }
+.panel-back { width: 36px; height: 36px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text2); }
+.panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 80px; }
+.cat-type-tabs { display: flex; gap: 4px; padding: 12px 16px 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+.cat-type-tab { padding: 7px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text2); background: transparent; transition: all .2s; }
+.cat-type-tab.active { background: var(--primary); color: #fff; }
+.cat-list-section { padding: 12px 16px; }
+.cat-row { background: var(--surface); border-radius: 14px; margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow); }
+.cat-row-main { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.cat-row-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.cat-row-name { flex: 1; font-size: 14px; font-weight: 600; }
+.cat-row-name.inactive { color: var(--text3); text-decoration: line-through; }
+.cat-row-btns { display: flex; gap: 6px; align-items: center; }
+.cat-act-btn { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); color: var(--text2); font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.toggle-switch { width: 40px; height: 22px; border-radius: 11px; background: var(--border); position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+.toggle-switch.on { background: var(--primary); }
+.toggle-knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform .2s; }
+.toggle-switch.on .toggle-knob { transform: translateX(18px); }
+.cat-subs-row { padding: 0 14px 10px 60px; display: flex; flex-wrap: wrap; gap: 6px; }
+.sub-chip { font-size: 11px; color: var(--text2); background: var(--surface2); border-radius: 12px; padding: 3px 10px; }
+.sub-chip.del-sub { cursor: pointer; }
+.sub-chip.del-sub::after { content: ' ✕'; }
+.btn-add-cat { width: calc(100% - 32px); margin: 0 16px 16px; background: transparent; border: 1.5px dashed var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; }
+
+/* 카테고리 편집 시트 */
+.cat-edit-sheet-body { display: flex; flex-direction: column; gap: 14px; }
+.icon-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
+.icon-option { width: 100%; aspect-ratio: 1; border-radius: 10px; background: var(--surface2); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+.icon-option.selected { border-color: var(--primary-dark); background: var(--primary-light); }
+.cat-color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.cat-color-option { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all .15s; }
+.cat-color-option.selected { border-color: var(--text); transform: scale(1.15); }
+.sub-input-row { display: flex; gap: 8px; align-items: center; }
+.sub-input-row input { flex: 1; }
+.sub-input-row button { flex-shrink: 0; padding: 10px 14px; background: var(--primary-light); color: var(--primary-dark); border-radius: 10px; font-size: 13px; font-weight: 600; }
+.active-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.active-toggle-label { font-size: 14px; font-weight: 500; }
+
+/* =============================================
    Coming soon
    ============================================= */
 .coming-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 12px; color: var(--text3); }
@@ -670,6 +714,20 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
           </div>
         </div>
 
+        <div class="settings-title">카테고리 관리</div>
+        <div class="settings-card">
+          <div class="settings-item" onclick="openCatMgmt('expense')">
+            <span class="settings-item-icon">🏷️</span>
+            <span class="settings-item-label">지출 카테고리</span>
+            <span class="settings-item-arrow">›</span>
+          </div>
+          <div class="settings-item" onclick="openCatMgmt('income')">
+            <span class="settings-item-icon">🏷️</span>
+            <span class="settings-item-label">수입 카테고리</span>
+            <span class="settings-item-arrow">›</span>
+          </div>
+        </div>
+
         <div class="settings-title">💳 카드 관리</div>
         <div class="settings-card" id="cards-settings-list"></div>
         <button class="btn-add-card" onclick="openCardForm()">+ 카드 추가</button>
@@ -1013,6 +1071,66 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 <div class="toast" id="toast"></div>
 
 <!-- =============================================
+     카테고리 관리 패널
+     ============================================= -->
+<div class="cat-mgmt-panel" id="cat-mgmt-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeCatMgmt()">←</button>
+    <div class="panel-title" id="cat-mgmt-title">지출 카테고리</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="cat-type-tabs">
+    <button class="cat-type-tab active" id="cat-tab-expense" onclick="switchCatTab('expense')">지출</button>
+    <button class="cat-type-tab" id="cat-tab-income" onclick="switchCatTab('income')">수입</button>
+  </div>
+  <div class="panel-body">
+    <div class="cat-list-section" id="cat-list-section"></div>
+    <button class="btn-add-cat" onclick="openCatEdit(null)">+ 카테고리 추가</button>
+  </div>
+</div>
+
+<!-- 카테고리 편집 시트 -->
+<div class="bottom-sheet-overlay" id="cat-edit-overlay" onclick="closeCatEdit()"></div>
+<div class="bottom-sheet" id="cat-edit-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title" id="cat-edit-title">카테고리 추가</div>
+    <button class="sheet-close" onclick="closeCatEdit()">✕</button>
+  </div>
+  <div class="sheet-body cat-edit-sheet-body">
+    <div class="form-row">
+      <label>이름</label>
+      <input type="text" id="cat-edit-name" placeholder="카테고리 이름">
+    </div>
+    <div class="form-row">
+      <label>아이콘</label>
+      <div class="icon-picker-grid" id="cat-icon-picker"></div>
+    </div>
+    <div class="form-row">
+      <label>색상</label>
+      <div class="cat-color-picker" id="cat-color-picker"></div>
+    </div>
+    <div class="form-row" id="cat-active-row" style="display:none">
+      <div class="active-toggle-row">
+        <span class="active-toggle-label">활성화</span>
+        <div class="toggle-switch on" id="cat-active-toggle" onclick="toggleCatActive()">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row" id="cat-subs-section">
+      <label>소분류</label>
+      <div id="cat-edit-subs-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+      <div class="sub-input-row">
+        <input type="text" id="cat-sub-input" placeholder="소분류 이름 입력" onkeydown="if(event.key==='Enter'){addSubInEdit();event.preventDefault();}">
+        <button onclick="addSubInEdit()">추가</button>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveCatEdit()">저장</button>
+  </div>
+</div>
+
+<!-- =============================================
      JavaScript
      ============================================= -->
 <script>
@@ -1050,26 +1168,56 @@ const state = {
 // =============================================
 // 카테고리 & 상수
 // =============================================
-const CATEGORIES = {
+let CATEGORIES = {
   expense: [
-    { name: '식비', color: '#FFB5A7', subs: ['식료품', '외식', '카페·음료'] },
-    { name: '교통', color: '#A8D8EA', subs: ['대중교통', '주유', '주차'] },
-    { name: '주거', color: '#C9B8E8', subs: ['월세·관리비', '전기·가스·수도', '인터넷·통신'] },
-    { name: '쇼핑', color: '#B5EAD7', subs: ['의류', '생활용품', '온라인쇼핑'] },
-    { name: '의료·건강', color: '#C7E8A0', subs: ['병원', '약국', '헬스·운동'] },
-    { name: '문화·여가', color: '#FFDAC1', subs: ['구독서비스', '여행', '취미'] },
-    { name: '교육', color: '#E2C4F0', subs: ['학원', '도서', '강의'] },
-    { name: '경조사', color: '#FFD6E0', subs: ['축의금·조의금', '선물'] },
-    { name: '저축', color: '#b8e0d2', subs: ['적금', '비상금'], excluded: true },
-    { name: '투자', color: '#c8d8e4', subs: ['주식·ETF', '코인', '펀드'], excluded: true },
-    { name: '기타 지출', color: '#D9D9D9', subs: [] },
+    { name: '식비', icon: '🍽', color: '#FFB5A7', subs: ['식료품', '외식', '카페·음료'] },
+    { name: '교통', icon: '🚌', color: '#A8D8EA', subs: ['대중교통', '주유', '주차'] },
+    { name: '주거', icon: '🏠', color: '#C9B8E8', subs: ['월세·관리비', '전기·가스·수도', '인터넷·통신'] },
+    { name: '쇼핑', icon: '🛍', color: '#B5EAD7', subs: ['의류', '생활용품', '온라인쇼핑'] },
+    { name: '의료·건강', icon: '💊', color: '#C7E8A0', subs: ['병원', '약국', '헬스·운동'] },
+    { name: '문화·여가', icon: '🎬', color: '#FFDAC1', subs: ['구독서비스', '여행', '취미'] },
+    { name: '교육', icon: '📚', color: '#E2C4F0', subs: ['학원', '도서', '강의'] },
+    { name: '경조사', icon: '🎁', color: '#FFD6E0', subs: ['축의금·조의금', '선물'] },
+    { name: '저축', icon: '💰', color: '#b8e0d2', subs: ['적금', '비상금'], excluded: true },
+    { name: '투자', icon: '📈', color: '#c8d8e4', subs: ['주식·ETF', '코인', '펀드'], excluded: true },
+    { name: '기타 지출', icon: '📦', color: '#D9D9D9', subs: [] },
   ],
   income: [
-    { name: '근로소득', color: '#A0C4FF', subs: ['월급', '상여금', '부수입'] },
-    { name: '금융소득', color: '#B5D5FF', subs: ['이자', '배당'] },
-    { name: '기타 수입', color: '#D0E8FF', subs: ['용돈', '환급', '판매'] },
+    { name: '근로소득', icon: '💼', color: '#A0C4FF', subs: ['월급', '상여금', '부수입'] },
+    { name: '금융소득', icon: '🏦', color: '#B5D5FF', subs: ['이자', '배당'] },
+    { name: '기타 수입', icon: '🌱', color: '#D0E8FF', subs: ['용돈', '환급', '판매'] },
   ],
 };
+
+// DB에서 로드된 카테고리 원본 (id 포함)
+let _dbCategories = [];
+
+function rebuildCategories(dbRows) {
+  _dbCategories = dbRows;
+  const parents = dbRows.filter(r => !r.parent);
+  const expense = [], income = [];
+  parents.sort((a, b) => a.sort_order - b.sort_order || a.created_at?.localeCompare(b.created_at || '') || 0);
+  parents.forEach(p => {
+    const subs = dbRows.filter(r => r.parent === p.name && r.is_active).map(r => r.name);
+    const entry = { name: p.name, icon: p.icon || '📦', color: p.color || '#D9D9D9', subs, is_active: p.is_active, id: p.id };
+    if (p.type === 'excluded') { entry.excluded = true; expense.push(entry); }
+    else if (p.type === 'expense') expense.push(entry);
+    else if (p.type === 'income') income.push(entry);
+  });
+  CATEGORIES.expense = expense.filter(c => c.is_active !== false);
+  CATEGORIES.income = income.filter(c => c.is_active !== false);
+  // Keep excluded ones for display but flag them
+  CATEGORIES._allExpense = expense;
+  CATEGORIES._allIncome = income;
+}
+
+async function loadCategories() {
+  try {
+    await api('POST', '/api/categories/seed', {});
+    const rows = await api('GET', '/api/categories');
+    rebuildCategories(rows);
+  } catch (e) { /* fallback to defaults */ }
+}
 
 const PAYMENT_METHODS = ['신용카드', '체크카드', '현금', '카카오페이', '네이버페이', '토스', '계좌이체', '기타'];
 
@@ -1159,6 +1307,7 @@ function enterApp() {
   }
   // 병렬 초기화
   Promise.all([
+    loadCategories(),
     loadCards(),
     generateFixedExpenses(),
   ]).then(() => {
@@ -2562,6 +2711,211 @@ async function saveCard() {
     await loadCards();
     renderCardListSettings();
     renderCardSummary();
+  } catch (e) { showToast(e.message); }
+}
+
+// =============================================
+// 카테고리 관리
+// =============================================
+const ICON_SET = [
+  '🍽','🍜','🥤','🍕','☕','🛒','🍺','🥗','🍱','🧃',
+  '🚌','🚗','⛽','✈️','🚲','🚕','🛵','🚢',
+  '🏠','💡','📱','🔧','🛁','🏢',
+  '👗','👟','💄','🎒','🛍','👔',
+  '💊','🏥','🏋','🧘','🌿','🩺',
+  '🎬','🎵','🎮','📸','🎭','🎨',
+  '📚','🎓','📖','✏️',
+  '🎁','🎂','💐','🎊',
+  '💰','📈','🏦','💳','💵',
+  '🐾','🐕','🐱',
+  '📦','⚙️','🔖','🌐','🎯','🌱','💼',
+];
+
+const CAT_PALETTE = [
+  '#FFB5A7','#A8D8EA','#C9B8E8','#B5EAD7','#C7E8A0','#FFDAC1',
+  '#E2C4F0','#FFD6E0','#D9D9D9','#b8e0d2','#c8d8e4','#A0C4FF',
+  '#B5D5FF','#D0E8FF','#FFF3B0','#FFD6A5','#CAFFBF','#9BF6FF',
+  '#BDB2FF','#FFC6FF','#FDFFB6','#E8E8E8',
+];
+
+let catMgmtTab = 'expense';
+let catEditState = { id: null, type: 'expense', subs: [], isActive: true, selectedIcon: null, selectedColor: null };
+
+function openCatMgmt(type = 'expense') {
+  catMgmtTab = type;
+  document.getElementById('cat-mgmt-panel').classList.add('visible');
+  switchCatTab(type);
+}
+function closeCatMgmt() {
+  document.getElementById('cat-mgmt-panel').classList.remove('visible');
+}
+
+function switchCatTab(type) {
+  catMgmtTab = type;
+  document.getElementById('cat-tab-expense').classList.toggle('active', type === 'expense');
+  document.getElementById('cat-tab-income').classList.toggle('active', type === 'income');
+  document.getElementById('cat-mgmt-title').textContent = type === 'expense' ? '지출 카테고리' : '수입 카테고리';
+  renderCatMgmtList();
+}
+
+function renderCatMgmtList() {
+  const el = document.getElementById('cat-list-section');
+  el.innerHTML = '';
+  const parents = _dbCategories.filter(r => !r.parent && (r.type === catMgmtTab || (catMgmtTab === 'expense' && r.type === 'excluded')));
+  parents.sort((a, b) => a.sort_order - b.sort_order);
+  if (parents.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px">카테고리가 없습니다</div>';
+    return;
+  }
+  parents.forEach(p => {
+    const subs = _dbCategories.filter(r => r.parent === p.name);
+    const isOn = p.is_active;
+    const div = document.createElement('div');
+    div.className = 'cat-row';
+    div.innerHTML = `
+      <div class="cat-row-main">
+        <div class="cat-row-icon" style="background:${p.color || '#eee'}22">${p.icon || '📦'}</div>
+        <div class="cat-row-name${isOn ? '' : ' inactive'}">${escHtml(p.name)}${p.type === 'excluded' ? ' <span style="font-size:10px;color:var(--text3)">(통계 제외)</span>' : ''}</div>
+        <div class="cat-row-btns">
+          <button class="cat-act-btn" onclick="openCatEdit('${p.id}')">✏️</button>
+          <div class="toggle-switch${isOn ? ' on' : ''}" onclick="toggleCatRow('${p.id}',${isOn})">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+      ${subs.length ? `<div class="cat-subs-row">${subs.map(s => `<span class="sub-chip">${escHtml(s.name)}</span>`).join('')}</div>` : ''}`;
+    el.appendChild(div);
+  });
+}
+
+async function toggleCatRow(id, currentOn) {
+  try {
+    await api('PUT', `/api/categories/${id}`, { is_active: !currentOn });
+    const rows = await api('GET', '/api/categories');
+    rebuildCategories(rows);
+    renderCatMgmtList();
+    showToast(currentOn ? '비활성화되었습니다.' : '활성화되었습니다.');
+  } catch (e) { showToast(e.message); }
+}
+
+function openCatEdit(id) {
+  const p = id ? _dbCategories.find(r => r.id === id) : null;
+  catEditState = {
+    id: id || null,
+    type: p ? p.type : catMgmtTab,
+    subs: id ? _dbCategories.filter(r => r.parent === (p ? p.name : '')).map(r => ({ id: r.id, name: r.name })) : [],
+    isActive: p ? p.is_active : true,
+    selectedIcon: p ? p.icon : ICON_SET[0],
+    selectedColor: p ? p.color : CAT_PALETTE[0],
+  };
+  document.getElementById('cat-edit-title').textContent = id ? '카테고리 수정' : '카테고리 추가';
+  document.getElementById('cat-edit-name').value = p ? p.name : '';
+  document.getElementById('cat-active-row').style.display = id ? '' : 'none';
+  const toggle = document.getElementById('cat-active-toggle');
+  toggle.classList.toggle('on', catEditState.isActive);
+
+  renderIconPicker();
+  renderCatColorPicker();
+  renderEditSubsList();
+
+  document.getElementById('cat-edit-overlay').classList.add('visible');
+  document.getElementById('cat-edit-sheet').classList.add('visible');
+}
+
+function closeCatEdit() {
+  document.getElementById('cat-edit-overlay').classList.remove('visible');
+  document.getElementById('cat-edit-sheet').classList.remove('visible');
+}
+
+function toggleCatActive() {
+  catEditState.isActive = !catEditState.isActive;
+  document.getElementById('cat-active-toggle').classList.toggle('on', catEditState.isActive);
+}
+
+function renderIconPicker() {
+  const el = document.getElementById('cat-icon-picker');
+  el.innerHTML = '';
+  ICON_SET.forEach(icon => {
+    const btn = document.createElement('button');
+    btn.className = 'icon-option' + (catEditState.selectedIcon === icon ? ' selected' : '');
+    btn.textContent = icon;
+    btn.onclick = () => { catEditState.selectedIcon = icon; renderIconPicker(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderCatColorPicker() {
+  const el = document.getElementById('cat-color-picker');
+  el.innerHTML = '';
+  CAT_PALETTE.forEach(color => {
+    const div = document.createElement('div');
+    div.className = 'cat-color-option' + (catEditState.selectedColor === color ? ' selected' : '');
+    div.style.background = color;
+    div.onclick = () => { catEditState.selectedColor = color; renderCatColorPicker(); };
+    el.appendChild(div);
+  });
+}
+
+function renderEditSubsList() {
+  const el = document.getElementById('cat-edit-subs-list');
+  el.innerHTML = '';
+  catEditState.subs.forEach((s, i) => {
+    const span = document.createElement('span');
+    span.className = 'sub-chip del-sub';
+    span.textContent = s.name;
+    span.onclick = () => { catEditState.subs.splice(i, 1); renderEditSubsList(); };
+    el.appendChild(span);
+  });
+}
+
+function addSubInEdit() {
+  const input = document.getElementById('cat-sub-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (catEditState.subs.find(s => s.name === name)) { showToast('이미 있는 소분류입니다.'); return; }
+  catEditState.subs.push({ id: null, name });
+  input.value = '';
+  renderEditSubsList();
+}
+
+async function saveCatEdit() {
+  const name = document.getElementById('cat-edit-name').value.trim();
+  if (!name) return showToast('카테고리 이름을 입력하세요.');
+  try {
+    let parentId = catEditState.id;
+    let parentName = name;
+    if (catEditState.id) {
+      // 수정
+      const prev = _dbCategories.find(r => r.id === catEditState.id);
+      const prevName = prev?.name;
+      await api('PUT', `/api/categories/${catEditState.id}`, {
+        name, icon: catEditState.selectedIcon, color: catEditState.selectedColor,
+        is_active: catEditState.isActive,
+      });
+      // 이름이 바뀌면 소분류 parent도 업데이트 필요 (현재는 DB에서 name 기준이라 새로 삽입)
+      parentName = name;
+    } else {
+      // 신규
+      const maxOrder = Math.max(0, ..._dbCategories.filter(r => !r.parent && (r.type === catEditState.type || (catEditState.type === 'expense'))).map(r => r.sort_order || 0));
+      const created = await api('POST', '/api/categories', {
+        type: catEditState.type, name, icon: catEditState.selectedIcon,
+        color: catEditState.selectedColor, sort_order: maxOrder + 1,
+      });
+      parentId = created.id;
+      parentName = name;
+    }
+    // 소분류 동기화: 기존 삭제 후 현재 목록으로 재삽입
+    const existingSubs = _dbCategories.filter(r => r.parent === (catEditState.id ? _dbCategories.find(p => p.id === catEditState.id)?.name : parentName) && r.parent);
+    for (const s of existingSubs) await api('DELETE', `/api/categories/${s.id}`);
+    for (let i = 0; i < catEditState.subs.length; i++) {
+      const s = catEditState.subs[i];
+      await api('POST', '/api/categories', { type: catEditState.type, name: s.name, parent: name, sort_order: i });
+    }
+    const rows = await api('GET', '/api/categories');
+    rebuildCategories(rows);
+    renderCatMgmtList();
+    closeCatEdit();
+    showToast(catEditState.id ? '저장되었습니다.' : '카테고리가 추가되었습니다.');
   } catch (e) { showToast(e.message); }
 }
 
