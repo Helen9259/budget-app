@@ -289,6 +289,99 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .coming-soon-sub { font-size: 13px; }
 
 /* =============================================
+   자산관리 탭 — 대시보드
+   ============================================= */
+.asset-header { background: var(--surface); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.btn-asset-input { background: var(--primary); color: #fff; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 600; }
+.asset-summary-cards { display: flex; gap: 8px; padding: 12px 16px 0; }
+.asset-sum-card { flex: 1; background: var(--surface); border-radius: 12px; padding: 14px 12px; box-shadow: var(--shadow); }
+.asset-sum-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.asset-sum-value { font-size: 18px; font-weight: 700; }
+.asset-sum-value.total { color: var(--primary-dark); }
+.asset-sum-value.net { color: #43a047; }
+.asset-section { background: var(--surface); margin: 12px 16px 0; border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.asset-section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 12px; }
+.asset-comp-wrap { display: flex; align-items: center; gap: 14px; }
+.asset-comp-svg { width: 120px; height: 120px; flex-shrink: 0; overflow: visible; }
+.asset-comp-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.asset-leg-item { display: flex; align-items: center; gap: 7px; }
+.asset-leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.asset-leg-label { font-size: 12px; color: var(--text2); flex: 1; }
+.asset-leg-right { text-align: right; }
+.asset-leg-amt { font-size: 13px; font-weight: 700; color: var(--text); display: block; }
+.asset-leg-pct { font-size: 11px; color: var(--text3); }
+.asset-chart-canvas { width: 100%; display: block; }
+.asset-chart-legend { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.asset-chart-leg-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
+.asset-chart-leg-dot { width: 10px; height: 8px; border-radius: 2px; }
+.asset-chart-leg-line { width: 18px; height: 2px; border-radius: 1px; background: #7e57c2; }
+.loans-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.loans-title-txt { font-size: 13px; font-weight: 700; color: var(--text2); }
+.loans-edit-btn { width: 28px; height: 28px; border-radius: 8px; background: var(--surface2); color: var(--text2); font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.loans-note { font-size: 11px; color: var(--text3); margin-bottom: 10px; }
+.loan-view-item { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.loan-view-item:last-child { border-bottom: none; }
+.loan-view-name { flex: 1; font-size: 14px; font-weight: 600; }
+.loan-view-amt { font-size: 13px; font-weight: 700; color: var(--expense-color); }
+.loan-view-rate { font-size: 11px; color: var(--text3); margin-left: 4px; }
+.loans-empty-msg { font-size: 13px; color: var(--text3); text-align: center; padding: 10px 0; }
+.asset-dash-empty { text-align: center; color: var(--text3); padding: 20px 0; }
+.asset-dash-empty-icon { font-size: 32px; margin-bottom: 6px; }
+.asset-dash-empty-txt { font-size: 13px; }
+
+/* =============================================
+   자산 입력 패널
+   ============================================= */
+.asset-input-panel { position: fixed; inset: 0; background: var(--bg); z-index: 160; display: none; flex-direction: column; }
+.asset-input-panel.visible { display: flex; }
+.asset-input-month-nav { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.asset-input-body { flex: 1; overflow-y: auto; padding: 0 0 100px; }
+.btn-add-asset-item { display: block; width: calc(100% - 32px); margin: 12px 16px 0; background: transparent; border: 1.5px dashed var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 11px; font-size: 13px; font-weight: 600; }
+.asset-type-group { margin: 12px 16px 0; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.asset-type-header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.asset-type-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.asset-type-label-text { font-size: 13px; font-weight: 700; flex: 1; }
+.asset-type-group-total { font-size: 13px; font-weight: 700; color: var(--text2); }
+.asset-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.asset-row:last-child { border-bottom: none; }
+.asset-row-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); min-width: 0; }
+.asset-row-new-badge { display: inline-block; font-size: 10px; background: var(--primary-light); color: var(--primary-dark); border-radius: 8px; padding: 1px 6px; font-weight: 600; margin-left: 4px; vertical-align: middle; }
+.asset-row-amount-wrap { width: 116px; flex-shrink: 0; position: relative; }
+.asset-row-amount-wrap input { text-align: right; font-weight: 700; font-size: 14px; padding: 6px 22px 6px 8px; }
+.asset-row-amount-unit { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text3); }
+.asset-row-del-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); color: var(--text3); font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.asset-group-empty-msg { padding: 12px 14px; font-size: 12px; color: var(--text3); }
+.asset-input-save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); padding: 12px 16px; border-top: 1px solid var(--border); z-index: 161; }
+.asset-no-prev-msg { margin: 12px 16px 0; background: var(--primary-light); border-radius: 12px; padding: 12px; font-size: 12px; color: var(--primary-dark); line-height: 1.6; }
+
+/* =============================================
+   자산 항목 추가 모달
+   ============================================= */
+.add-asset-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.add-asset-modal.visible { opacity: 1; pointer-events: all; }
+.add-asset-box { background: var(--surface); border-radius: 24px 24px 0 0; padding: 20px 16px 32px; width: 100%; }
+.add-asset-box-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+.add-asset-type-btns { display: flex; gap: 6px; margin-bottom: 14px; }
+.add-asset-type-btn { flex: 1; padding: 9px 4px; border-radius: 10px; font-size: 12px; font-weight: 600; background: var(--surface2); color: var(--text2); border: 2px solid transparent; transition: all .15s; }
+.add-asset-type-btn.selected { color: #fff; }
+
+/* =============================================
+   대출 편집 패널
+   ============================================= */
+.loan-edit-panel { position: fixed; inset: 0; background: var(--bg); z-index: 160; display: none; flex-direction: column; }
+.loan-edit-panel.visible { display: flex; }
+.loan-edit-body { flex: 1; overflow-y: auto; padding: 12px 16px 90px; }
+.loan-edit-row { display: flex; gap: 8px; align-items: flex-start; background: var(--surface); border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: var(--shadow); }
+.loan-edit-fields { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.loan-edit-fields input { padding: 7px 10px; font-size: 13px; }
+.loan-rate-row { display: flex; align-items: center; gap: 6px; }
+.loan-rate-row input { flex: 1; }
+.loan-rate-unit { font-size: 12px; color: var(--text2); white-space: nowrap; }
+.loan-edit-del-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); color: var(--text3); font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.btn-add-loan { width: 100%; background: transparent; border: 1.5px dashed var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 11px; font-size: 13px; font-weight: 600; }
+.loan-edit-save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); padding: 12px 16px; border-top: 1px solid var(--border); z-index: 161; }
+
+/* =============================================
    통계 화면
    ============================================= */
 .stats-panel { position: fixed; inset: 0; background: var(--bg); z-index: 150; display: none; flex-direction: column; }
@@ -474,10 +567,59 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 
     <!-- 자산관리 탭 -->
     <div id="tab-assets" style="display:none">
-      <div class="coming-soon">
-        <div class="coming-soon-icon">🏦</div>
-        <div class="coming-soon-text">자산관리</div>
-        <div class="coming-soon-sub">다음 업데이트에서 제공됩니다</div>
+      <div class="asset-header">
+        <div class="month-nav" style="margin-bottom:0">
+          <button class="month-nav-btn" onclick="assetChangeMonth(-1)">←</button>
+          <span class="month-label" id="asset-month-label">2026.06</span>
+          <button class="month-nav-btn" onclick="assetChangeMonth(1)">→</button>
+        </div>
+        <button class="btn-asset-input" onclick="openAssetInput()">월별 자산 입력</button>
+      </div>
+
+      <div class="asset-summary-cards">
+        <div class="asset-sum-card">
+          <div class="asset-sum-label">총 자산</div>
+          <div class="asset-sum-value total" id="asset-total-val">₩0</div>
+        </div>
+        <div class="asset-sum-card">
+          <div class="asset-sum-label">순자산</div>
+          <div class="asset-sum-value net" id="asset-net-val">₩0</div>
+        </div>
+      </div>
+
+      <!-- 자산 구성 도넛 -->
+      <div class="asset-section">
+        <div class="asset-section-title">자산 구성</div>
+        <div id="asset-comp-empty" class="asset-dash-empty" style="display:none">
+          <div class="asset-dash-empty-icon">📊</div>
+          <div class="asset-dash-empty-txt">자산을 입력하면 구성 비율이 표시됩니다</div>
+        </div>
+        <div class="asset-comp-wrap" id="asset-comp-chart">
+          <svg class="asset-comp-svg" id="asset-comp-svg" viewBox="0 0 120 120"></svg>
+          <div class="asset-comp-legend" id="asset-comp-legend"></div>
+        </div>
+      </div>
+
+      <!-- 순자산 추이 차트 -->
+      <div class="asset-section">
+        <div class="asset-section-title">순자산 추이 (최근 12개월)</div>
+        <canvas class="asset-chart-canvas" id="asset-history-canvas" height="180"></canvas>
+        <div class="asset-chart-legend">
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#b39ddb"></div>예금·적금</div>
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#90caf9"></div>투자</div>
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#a5d6a7"></div>현금·예수금</div>
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-line"></div>순자산</div>
+        </div>
+      </div>
+
+      <!-- 대출 현황 -->
+      <div class="asset-section" style="margin-bottom:12px">
+        <div class="loans-header">
+          <span class="loans-title-txt">🏦 대출 현황</span>
+          <button class="loans-edit-btn" onclick="openLoanEdit()">✏️</button>
+        </div>
+        <div class="loans-note">※ 순자산 계산에는 포함되지 않습니다</div>
+        <div id="loans-list"></div>
       </div>
     </div>
 
@@ -682,6 +824,67 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
       <div class="color-picker" id="color-picker"></div>
     </div>
     <button class="btn-primary" onclick="saveCard()">저장</button>
+  </div>
+</div>
+
+<!-- =============================================
+     자산 입력 패널
+     ============================================= -->
+<div class="asset-input-panel" id="asset-input-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeAssetInput()">←</button>
+    <span class="panel-header-title">월별 자산 입력</span>
+  </div>
+  <div class="asset-input-month-nav">
+    <button class="month-nav-btn" onclick="assetInputChangeMonth(-1)">←</button>
+    <span class="month-label" id="asset-input-month-label">2026.06</span>
+    <button class="month-nav-btn" onclick="assetInputChangeMonth(1)">→</button>
+  </div>
+  <div class="asset-input-body">
+    <div id="asset-no-prev-msg" class="asset-no-prev-msg" style="display:none">
+      📌 이전 달 입력 내역이 없어요. 처음 입력하는 경우 아래 항목 추가 버튼으로 시작하세요.
+    </div>
+    <button class="btn-add-asset-item" onclick="openAddAssetItem()">＋ 항목 추가</button>
+    <div id="asset-input-groups"></div>
+  </div>
+  <div class="asset-input-save-bar">
+    <button class="btn-primary" onclick="saveAssetSnapshot()">저장</button>
+  </div>
+</div>
+
+<!-- =============================================
+     자산 항목 추가 모달
+     ============================================= -->
+<div class="add-asset-modal" id="add-asset-modal" onclick="closeAddAssetItem()">
+  <div class="add-asset-box" onclick="event.stopPropagation()">
+    <div class="add-asset-box-title">항목 추가</div>
+    <div class="add-asset-type-btns" id="add-asset-type-btns"></div>
+    <div class="form-row"><label>항목명 <span style="color:#e57373">*</span></label><input type="text" id="new-asset-name" placeholder="예) 국민은행 적금, 삼성전자"></div>
+    <div class="form-row">
+      <label>금액</label>
+      <div class="form-amount-wrap">
+        <input type="text" id="new-asset-amount" placeholder="0" inputmode="numeric" oninput="formatAmount(this)">
+        <span class="form-amount-unit">원</span>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="confirmAddAssetItem()">추가</button>
+  </div>
+</div>
+
+<!-- =============================================
+     대출 편집 패널
+     ============================================= -->
+<div class="loan-edit-panel" id="loan-edit-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeLoanEdit()">←</button>
+    <span class="panel-header-title">대출 편집</span>
+  </div>
+  <div class="loan-edit-body">
+    <div id="loan-edit-rows"></div>
+    <button class="btn-add-loan" onclick="addLoanEditItem()" style="margin-top:8px">＋ 대출 추가</button>
+  </div>
+  <div class="loan-edit-save-bar">
+    <button class="btn-primary" onclick="saveLoanEdit()">저장</button>
   </div>
 </div>
 
@@ -945,6 +1148,441 @@ function showTab(tab) {
   document.getElementById('header-left-btn').style.display = showIcons ? '' : 'none';
   document.getElementById('header-right-btn').style.display = showIcons ? '' : 'none';
   if (tab === 'settings') renderCardListSettings();
+  if (tab === 'assets') {
+    document.getElementById('asset-month-label').textContent = monthStr(assetState.year, assetState.month);
+    loadAssets();
+  }
+}
+
+// =============================================
+// 자산관리 상태 & 상수
+// =============================================
+const ASSET_TYPES = [
+  { key: 'savings',    label: '예금·적금',       color: '#b39ddb' },
+  { key: 'investment', label: '주식·ETF·코인',   color: '#90caf9' },
+  { key: 'cash',       label: '현금·예수금',      color: '#a5d6a7' },
+];
+
+const assetState = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  snapshot: [], history: [], loans: [],
+};
+const assetInputState = {
+  year: new Date().getFullYear(), month: new Date().getMonth() + 1,
+  items: [],       // [{type, name, amount, isNew}]
+  prevNames: new Set(),
+  hasPrevData: false,
+};
+const loanEditState = { items: [] };
+let _addAssetType = 'savings';
+
+function toYM(y, m) { return `${y}-${String(m).padStart(2, '0')}`; }
+function prevMonthYM(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  return toYM(d.getFullYear(), d.getMonth() + 1);
+}
+
+async function loadAssets() {
+  const ym = toYM(assetState.year, assetState.month);
+  try {
+    const [snapshot, history, loans] = await Promise.all([
+      api('GET', `/api/assets/snapshot?year_month=${ym}`),
+      api('GET', '/api/assets/history'),
+      api('GET', '/api/loans'),
+    ]);
+    assetState.snapshot = snapshot;
+    assetState.history = history;
+    assetState.loans = loans;
+    renderAssetDashboard();
+  } catch { showToast('자산 데이터를 불러오지 못했습니다.'); }
+}
+
+function assetChangeMonth(d) {
+  assetState.month += d;
+  if (assetState.month > 12) { assetState.month = 1; assetState.year++; }
+  if (assetState.month < 1) { assetState.month = 12; assetState.year--; }
+  document.getElementById('asset-month-label').textContent = monthStr(assetState.year, assetState.month);
+  loadAssets();
+}
+
+// =============================================
+// 자산 대시보드 렌더링
+// =============================================
+function renderAssetDashboard() {
+  const total = assetState.snapshot.reduce((s, it) => s + it.amount, 0);
+  document.getElementById('asset-total-val').textContent = fmt(total);
+  document.getElementById('asset-net-val').textContent = fmt(total);
+
+  const hasData = total > 0;
+  document.getElementById('asset-comp-empty').style.display = hasData ? 'none' : '';
+  document.getElementById('asset-comp-chart').style.display = hasData ? '' : 'none';
+
+  if (hasData) renderAssetDonut(assetState.snapshot, total);
+  renderAssetHistoryChart();
+  renderLoansList();
+}
+
+function renderAssetDonut(items, total) {
+  const svg = document.getElementById('asset-comp-svg');
+  const legend = document.getElementById('asset-comp-legend');
+  if (!svg || !legend) return;
+  svg.innerHTML = '';
+  legend.innerHTML = '';
+
+  const cx = 60, cy = 60, outerR = 52, innerR = 34;
+  const byType = { savings: 0, investment: 0, cash: 0 };
+  items.forEach(it => { byType[it.type] = (byType[it.type] || 0) + it.amount; });
+
+  const active = ASSET_TYPES.filter(t => byType[t.key] > 0);
+  const GAP = active.length > 1 ? 3 : 0;
+  let startDeg = 0;
+
+  if (active.length === 0) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy);
+    c.setAttribute('r', (outerR + innerR) / 2);
+    c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'var(--border)');
+    c.setAttribute('stroke-width', outerR - innerR);
+    svg.appendChild(c);
+  } else {
+    active.forEach(t => {
+      const sweep = (byType[t.key] / total) * (360 - GAP * active.length);
+      const endDeg = startDeg + sweep;
+      const o1 = polarToXY(cx, cy, outerR, startDeg + GAP / 2);
+      const o2 = polarToXY(cx, cy, outerR, endDeg - GAP / 2);
+      const i1 = polarToXY(cx, cy, innerR, endDeg - GAP / 2);
+      const i2 = polarToXY(cx, cy, innerR, startDeg + GAP / 2);
+      const large = sweep > 180 ? 1 : 0;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${o1.x.toFixed(1)} ${o1.y.toFixed(1)} A ${outerR} ${outerR} 0 ${large} 1 ${o2.x.toFixed(1)} ${o2.y.toFixed(1)} L ${i1.x.toFixed(1)} ${i1.y.toFixed(1)} A ${innerR} ${innerR} 0 ${large} 0 ${i2.x.toFixed(1)} ${i2.y.toFixed(1)} Z`);
+      path.setAttribute('fill', t.color);
+      svg.appendChild(path);
+      startDeg = endDeg + GAP;
+    });
+  }
+
+  ASSET_TYPES.forEach(t => {
+    const amt = byType[t.key] || 0;
+    const pct = total > 0 ? Math.round(amt / total * 100) : 0;
+    const div = document.createElement('div');
+    div.className = 'asset-leg-item';
+    div.innerHTML = `
+      <span class="asset-leg-dot" style="background:${t.color}"></span>
+      <span class="asset-leg-label">${t.label}</span>
+      <div class="asset-leg-right">
+        <span class="asset-leg-amt">${fmt(amt)}</span>
+        <span class="asset-leg-pct">${pct}%</span>
+      </div>`;
+    legend.appendChild(div);
+  });
+}
+
+function renderAssetHistoryChart() {
+  const canvas = document.getElementById('asset-history-canvas');
+  if (!canvas) return;
+  const history = assetState.history;
+  const container = canvas.parentElement;
+  const W = Math.max(container.clientWidth || 320, 280);
+  canvas.width = W; canvas.height = 180;
+  const H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = { top: 18, right: 48, bottom: 32, left: 48 };
+  const cW = W - PAD.left - PAD.right, cH = H - PAD.top - PAD.bottom;
+
+  if (!history.some(m => m.items !== null)) {
+    ctx.fillStyle = '#a09ab8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('자산을 입력하면 추이가 표시됩니다', W / 2, H / 2);
+    return;
+  }
+
+  const maxVal = Math.max(...history.filter(m => m.total !== null).map(m => m.total), 1);
+  const yMax = maxVal * 1.25;
+  const yScale = cH / yMax;
+  const n = history.length;
+  const slotW = cW / n;
+  const barW = Math.max(6, Math.floor(slotW * 0.55));
+
+  // Grid
+  ctx.strokeStyle = '#e8e0f0'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD.top + cH - (cH / 4 * i);
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
+    const val = yMax / 4 * i;
+    const lbl = val >= 100000000 ? (val / 100000000).toFixed(1).replace(/\.0$/, '') + '억'
+              : val >= 10000 ? Math.floor(val / 10000) + '만' : '';
+    if (lbl) {
+      ctx.fillStyle = '#b0a8c8'; ctx.font = '9px sans-serif';
+      ctx.textAlign = 'right'; ctx.fillText(lbl, PAD.left - 3, y + 3);
+      ctx.textAlign = 'left';  ctx.fillText(lbl, W - PAD.right + 3, y + 3);
+    }
+  }
+
+  // Stacked bars
+  history.forEach((m, i) => {
+    if (!m.items) return;
+    const x = PAD.left + i * slotW + (slotW - barW) / 2;
+    let stackY = PAD.top + cH;
+    ['savings', 'investment', 'cash'].forEach(type => {
+      const col = ASSET_TYPES.find(t => t.key === type).color;
+      const val = m.items.filter(it => it.type === type).reduce((s, it) => s + it.amount, 0);
+      if (val <= 0) return;
+      const h = Math.max(1, val * yScale);
+      stackY -= h;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, stackY, barW, h, [2, 2, 0, 0]);
+      else ctx.rect(x, stackY, barW, h);
+      ctx.fill();
+    });
+  });
+
+  // Net asset line
+  ctx.strokeStyle = '#7e57c2'; ctx.lineWidth = 2; ctx.setLineDash([]);
+  let prev = null;
+  history.forEach((m, i) => {
+    if (m.total === null) { prev = null; return; }
+    const x = PAD.left + i * slotW + slotW / 2;
+    const y = PAD.top + cH - m.total * yScale;
+    if (prev) { ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(x, y); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#7e57c2'; ctx.fill();
+    prev = { x, y };
+  });
+
+  // X labels
+  ctx.fillStyle = '#b0a8c8'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  history.forEach((m, i) => {
+    const mo = parseInt(m.year_month.split('-')[1]);
+    ctx.fillText(mo + '월', PAD.left + i * slotW + slotW / 2, H - PAD.bottom + 12);
+  });
+}
+
+function renderLoansList() {
+  const el = document.getElementById('loans-list');
+  if (!el) return;
+  if (!assetState.loans.length) {
+    el.innerHTML = '<div class="loans-empty-msg">등록된 대출이 없어요</div>';
+    return;
+  }
+  el.innerHTML = '';
+  assetState.loans.forEach(loan => {
+    const div = document.createElement('div');
+    div.className = 'loan-view-item';
+    div.innerHTML = `
+      <span class="loan-view-name">${escHtml(loan.name)}</span>
+      <span class="loan-view-amt">${fmt(loan.principal)}</span>
+      <span class="loan-view-rate">${loan.interest_rate > 0 ? loan.interest_rate + '%' : ''}</span>`;
+    el.appendChild(div);
+  });
+}
+
+// =============================================
+// 자산 입력 패널
+// =============================================
+async function openAssetInput() {
+  assetInputState.year = assetState.year;
+  assetInputState.month = assetState.month;
+  document.getElementById('asset-input-month-label').textContent = monthStr(assetInputState.year, assetInputState.month);
+  document.getElementById('asset-input-panel').classList.add('visible');
+  await loadAssetInputData();
+}
+
+async function loadAssetInputData() {
+  const ym = toYM(assetInputState.year, assetInputState.month);
+  const pym = prevMonthYM(ym);
+  try {
+    const [curr, prev] = await Promise.all([
+      api('GET', `/api/assets/snapshot?year_month=${ym}`),
+      api('GET', `/api/assets/snapshot?year_month=${pym}`),
+    ]);
+    assetInputState.prevNames = new Set(prev.map(p => p.name));
+    assetInputState.hasPrevData = prev.length > 0;
+    const source = curr.length > 0 ? curr : prev;
+    assetInputState.items = source.map(it => ({
+      type: it.type, name: it.name, amount: it.amount,
+      isNew: curr.length > 0 && !assetInputState.prevNames.has(it.name),
+    }));
+    const noData = source.length === 0;
+    document.getElementById('asset-no-prev-msg').style.display = noData ? '' : 'none';
+    renderAssetInputForm();
+  } catch { showToast('데이터를 불러오지 못했습니다.'); }
+}
+
+function closeAssetInput() {
+  document.getElementById('asset-input-panel').classList.remove('visible');
+}
+
+async function assetInputChangeMonth(d) {
+  assetInputState.month += d;
+  if (assetInputState.month > 12) { assetInputState.month = 1; assetInputState.year++; }
+  if (assetInputState.month < 1) { assetInputState.month = 12; assetInputState.year--; }
+  document.getElementById('asset-input-month-label').textContent = monthStr(assetInputState.year, assetInputState.month);
+  await loadAssetInputData();
+}
+
+function renderAssetInputForm() {
+  const container = document.getElementById('asset-input-groups');
+  container.innerHTML = '';
+  ASSET_TYPES.forEach(t => {
+    const typeItems = assetInputState.items.filter(it => it.type === t.key);
+    const typeTotal = typeItems.reduce((s, it) => s + it.amount, 0);
+
+    const group = document.createElement('div');
+    group.className = 'asset-type-group';
+    group.innerHTML = `
+      <div class="asset-type-header">
+        <span class="asset-type-dot" style="background:${t.color}"></span>
+        <span class="asset-type-label-text">${t.label}</span>
+        <span class="asset-type-group-total" id="type-total-${t.key}">${typeTotal > 0 ? fmt(typeTotal) : ''}</span>
+      </div>`;
+
+    if (typeItems.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'asset-group-empty-msg';
+      empty.textContent = '항목이 없어요';
+      group.appendChild(empty);
+    } else {
+      typeItems.forEach(item => {
+        const idx = assetInputState.items.indexOf(item);
+        const row = document.createElement('div');
+        row.className = 'asset-row';
+        const showNew = item.isNew || (!assetInputState.hasPrevData && assetInputState.prevNames.size === 0);
+        row.innerHTML = `
+          <div class="asset-row-name">
+            ${escHtml(item.name)}
+            ${item.isNew ? '<span class="asset-row-new-badge">NEW</span>' : ''}
+          </div>
+          <div class="asset-row-amount-wrap">
+            <input type="text" value="${fmtInput(item.amount)}" placeholder="0" inputmode="numeric"
+              oninput="formatAmount(this);assetInputState.items[${idx}].amount=parseAmt(this.value);updateAssetGroupTotals()">
+            <span class="asset-row-amount-unit">원</span>
+          </div>
+          <button class="asset-row-del-btn" onclick="deleteAssetInputItem(${idx})">✕</button>`;
+        group.appendChild(row);
+      });
+    }
+    container.appendChild(group);
+  });
+}
+
+function updateAssetGroupTotals() {
+  ASSET_TYPES.forEach(t => {
+    const total = assetInputState.items.filter(it => it.type === t.key).reduce((s, it) => s + it.amount, 0);
+    const el = document.getElementById(`type-total-${t.key}`);
+    if (el) el.textContent = total > 0 ? fmt(total) : '';
+  });
+}
+
+function deleteAssetInputItem(idx) {
+  assetInputState.items.splice(idx, 1);
+  renderAssetInputForm();
+}
+
+async function saveAssetSnapshot() {
+  const ym = toYM(assetInputState.year, assetInputState.month);
+  const items = assetInputState.items.map(it => ({ type: it.type, name: it.name, amount: it.amount }));
+  try {
+    await api('PUT', '/api/assets/snapshot', { year_month: ym, items });
+    closeAssetInput();
+    showToast(`${monthStr(assetInputState.year, assetInputState.month)} 자산 저장 완료`);
+    await loadAssets();
+  } catch (e) { showToast(e.message); }
+}
+
+// =============================================
+// 자산 항목 추가 모달
+// =============================================
+function openAddAssetItem() {
+  _addAssetType = 'savings';
+  document.getElementById('new-asset-name').value = '';
+  document.getElementById('new-asset-amount').value = '';
+  renderAddAssetTypeBtns();
+  document.getElementById('add-asset-modal').classList.add('visible');
+  setTimeout(() => document.getElementById('new-asset-name').focus(), 100);
+}
+function closeAddAssetItem() {
+  document.getElementById('add-asset-modal').classList.remove('visible');
+}
+function renderAddAssetTypeBtns() {
+  const el = document.getElementById('add-asset-type-btns');
+  el.innerHTML = '';
+  ASSET_TYPES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'add-asset-type-btn' + (_addAssetType === t.key ? ' selected' : '');
+    btn.style.background = _addAssetType === t.key ? t.color : '';
+    btn.textContent = t.label;
+    btn.onclick = () => { _addAssetType = t.key; renderAddAssetTypeBtns(); };
+    el.appendChild(btn);
+  });
+}
+function confirmAddAssetItem() {
+  const name = document.getElementById('new-asset-name').value.trim();
+  const amount = parseAmt(document.getElementById('new-asset-amount').value);
+  if (!name) return showToast('항목명을 입력하세요.');
+  if (assetInputState.items.some(it => it.name === name)) return showToast('같은 이름의 항목이 이미 있어요.');
+  assetInputState.items.push({ type: _addAssetType, name, amount, isNew: true });
+  closeAddAssetItem();
+  renderAssetInputForm();
+}
+
+// =============================================
+// 대출 편집 패널
+// =============================================
+function openLoanEdit() {
+  loanEditState.items = assetState.loans.map(l => ({ ...l }));
+  renderLoanEditForm();
+  document.getElementById('loan-edit-panel').classList.add('visible');
+}
+function closeLoanEdit() {
+  document.getElementById('loan-edit-panel').classList.remove('visible');
+}
+function renderLoanEditForm() {
+  const el = document.getElementById('loan-edit-rows');
+  el.innerHTML = '';
+  loanEditState.items.forEach((loan, i) => {
+    const row = document.createElement('div');
+    row.className = 'loan-edit-row';
+    row.innerHTML = `
+      <div class="loan-edit-fields">
+        <input type="text" placeholder="대출명" value="${escHtml(loan.name)}"
+          oninput="loanEditState.items[${i}].name=this.value">
+        <div style="position:relative">
+          <input type="text" placeholder="잔여 원금" value="${loan.principal > 0 ? fmtInput(loan.principal) : ''}"
+            inputmode="numeric" style="padding-right:24px"
+            oninput="formatAmount(this);loanEditState.items[${i}].principal=parseAmt(this.value)">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">원</span>
+        </div>
+        <div class="loan-rate-row">
+          <input type="number" placeholder="금리" step="0.1" min="0" max="99"
+            value="${loan.interest_rate || ''}"
+            oninput="loanEditState.items[${i}].interest_rate=parseFloat(this.value)||0">
+          <span class="loan-rate-unit">% 연이율</span>
+        </div>
+      </div>
+      <button class="loan-edit-del-btn" onclick="deleteLoanEditItem(${i})">✕</button>`;
+    el.appendChild(row);
+  });
+}
+function addLoanEditItem() {
+  loanEditState.items.push({ name: '', principal: 0, interest_rate: 0 });
+  renderLoanEditForm();
+}
+function deleteLoanEditItem(i) {
+  loanEditState.items.splice(i, 1);
+  renderLoanEditForm();
+}
+async function saveLoanEdit() {
+  const loans = loanEditState.items.filter(l => l.name.trim());
+  try {
+    assetState.loans = await api('PUT', '/api/loans', { loans });
+    closeLoanEdit();
+    renderLoansList();
+    showToast('대출 정보가 저장되었습니다.');
+  } catch (e) { showToast(e.message); }
 }
 
 // =============================================

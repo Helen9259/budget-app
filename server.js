@@ -477,4 +477,107 @@ app.delete('/api/fixed-expenses/:id', requireAuth, async (req, res) => {
   res.json({ message: '삭제되었습니다.' });
 });
 
+// =============================================
+// 자산 스냅샷 API
+// =============================================
+app.get('/api/assets/snapshot', requireAuth, async (req, res) => {
+  const { year_month } = req.query;
+  if (!year_month) return res.status(400).json({ error: 'year_month 필요' });
+  const { data, error } = await supabase
+    .from('asset_snapshots').select('*')
+    .eq('user_id', req.user.id).eq('year_month', year_month)
+    .order('type').order('name');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.get('/api/assets/history', requireAuth, async (req, res) => {
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const { data, error } = await supabase
+    .from('asset_snapshots').select('*')
+    .eq('user_id', req.user.id)
+    .gte('year_month', months[0]).lte('year_month', months[months.length - 1]);
+  if (error) return res.status(500).json({ error: error.message });
+
+  const byMonth = {};
+  (data || []).forEach(row => {
+    if (!byMonth[row.year_month]) byMonth[row.year_month] = [];
+    byMonth[row.year_month].push(row);
+  });
+
+  res.json(months.map(m => ({
+    year_month: m,
+    items: byMonth[m] || null,
+    total: byMonth[m] ? byMonth[m].reduce((s, r) => s + r.amount, 0) : null,
+  })));
+});
+
+app.put('/api/assets/snapshot', requireAuth, async (req, res) => {
+  const { year_month, items } = req.body;
+  if (!year_month || !Array.isArray(items))
+    return res.status(400).json({ error: 'year_month, items 필요' });
+
+  await supabase.from('asset_snapshots')
+    .delete().eq('user_id', req.user.id).eq('year_month', year_month);
+
+  if (items.length === 0) return res.json({ saved: 0 });
+
+  const rows = items.map(item => ({
+    user_id: req.user.id,
+    year_month,
+    type: item.type,
+    name: item.name,
+    amount: parseInt(item.amount) || 0,
+  }));
+  const { error } = await supabase.from('asset_snapshots').insert(rows);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ saved: rows.length });
+});
+
+// =============================================
+// 대출 API
+// =============================================
+app.get('/api/loans', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('loans').select('*').eq('user_id', req.user.id).order('created_at');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.put('/api/loans', requireAuth, async (req, res) => {
+  const { loans } = req.body;
+  if (!Array.isArray(loans)) return res.status(400).json({ error: 'loans 배열 필요' });
+
+  const { data: existing } = await supabase
+    .from('loans').select('id').eq('user_id', req.user.id);
+  const keepIds = loans.filter(l => l.id).map(l => l.id);
+  const deleteIds = (existing || []).map(l => l.id).filter(id => !keepIds.includes(id));
+
+  if (deleteIds.length > 0)
+    await supabase.from('loans').delete().in('id', deleteIds);
+
+  for (const loan of loans) {
+    const row = {
+      user_id: req.user.id,
+      name: loan.name,
+      principal: parseInt(String(loan.principal || 0).replace(/,/g, '')) || 0,
+      interest_rate: parseFloat(loan.interest_rate) || 0,
+    };
+    if (loan.id)
+      await supabase.from('loans').update(row).eq('id', loan.id).eq('user_id', req.user.id);
+    else
+      await supabase.from('loans').insert([row]);
+  }
+
+  const { data, error } = await supabase
+    .from('loans').select('*').eq('user_id', req.user.id).order('created_at');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
 app.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
