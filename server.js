@@ -3,13 +3,23 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
+  console.error('❌ 환경변수 누락:', {
+    SUPABASE_URL: !!SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
+  });
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -58,8 +68,8 @@ async function requireAuth(req, res, next) {
 
   const token = auth.split(' ')[1];
   const anonClient = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   );
   const { data: { user }, error } = await anonClient.auth.getUser();
@@ -90,7 +100,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ error: '이메일과 비밀번호를 입력하세요.' });
 
-  const anonClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { data, error } = await anonClient.auth.signInWithPassword({ email, password });
   if (error) return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
   res.json({
@@ -103,7 +113,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/refresh', async (req, res) => {
   const { refresh_token } = req.body;
   if (!refresh_token) return res.status(400).json({ error: 'refresh_token이 필요합니다.' });
-  const anonClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { data, error } = await anonClient.auth.refreshSession({ refresh_token });
   if (error) return res.status(401).json({ error: error.message });
   res.json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
