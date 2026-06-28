@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#b39ddb">
+<meta name="theme-color" content="#C9B8E8">
 <title>가계부</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png">
+<link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1248,7 +1250,11 @@ function dateStr(y, m, d) { return `${y}-${String(m).padStart(2, '0')}-${String(
 function showToast(msg, ms = 2200) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), ms); }
 function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function getCatColor(name) { for (const list of Object.values(CATEGORIES)) { const f = list.find(c => c.name === name); if (f) return f.color; } return '#D9D9D9'; }
-function isExcluded(cat) { return CATEGORIES.expense.filter(c => c.excluded).map(c => c.name).includes(cat); }
+function isExcluded(cat) {
+  if (_dbCategories.length > 0)
+    return _dbCategories.some(r => !r.parent && r.name === cat && r.type === 'excluded');
+  return CATEGORIES.expense.filter(c => c.excluded).map(c => c.name).includes(cat);
+}
 
 // =============================================
 // 인증
