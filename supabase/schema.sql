@@ -1,5 +1,6 @@
 -- =============================================
 -- 가계부 + 자산관리 통합 앱 스키마
+-- 여러 번 실행해도 안전합니다.
 -- =============================================
 
 -- =============================================
@@ -14,8 +15,8 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   content      TEXT NOT NULL,
   category     TEXT NOT NULL,
   subcategory  TEXT,
-  payment_method TEXT,   -- '신용카드','체크카드','현금','카카오페이','네이버페이','토스','계좌이체','기타'
-  credit_card_id UUID,   -- 신용카드 선택 시 참조 (STEP 2에서 카드 테이블 추가)
+  payment_method TEXT,
+  credit_card_id UUID,
   memo         TEXT,
   is_fixed     BOOLEAN NOT NULL DEFAULT FALSE,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -26,14 +27,14 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 -- 2. 카테고리 테이블
 -- =============================================
 CREATE TABLE IF NOT EXISTS public.categories (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id   UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  type      TEXT NOT NULL CHECK (type IN ('income', 'expense', 'excluded')),
-  name      TEXT NOT NULL,
-  parent    TEXT,         -- 소분류인 경우 대분류 이름
-  icon      TEXT,
-  color     TEXT,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL CHECK (type IN ('income', 'expense', 'excluded')),
+  name       TEXT NOT NULL,
+  parent     TEXT,
+  icon       TEXT,
+  color      TEXT,
+  is_active  BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -61,36 +62,29 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories   ENABLE ROW LEVEL SECURITY;
 
 -- transactions RLS
-CREATE POLICY "transactions_select" ON public.transactions
-  FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "transactions_select" ON public.transactions;
+DROP POLICY IF EXISTS "transactions_insert" ON public.transactions;
+DROP POLICY IF EXISTS "transactions_update" ON public.transactions;
+DROP POLICY IF EXISTS "transactions_delete" ON public.transactions;
 
-CREATE POLICY "transactions_insert" ON public.transactions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "transactions_update" ON public.transactions
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "transactions_delete" ON public.transactions
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "transactions_select" ON public.transactions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "transactions_insert" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "transactions_update" ON public.transactions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "transactions_delete" ON public.transactions FOR DELETE USING (auth.uid() = user_id);
 
 -- categories RLS
-CREATE POLICY "categories_select" ON public.categories
-  FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "categories_select" ON public.categories;
+DROP POLICY IF EXISTS "categories_insert" ON public.categories;
+DROP POLICY IF EXISTS "categories_update" ON public.categories;
+DROP POLICY IF EXISTS "categories_delete" ON public.categories;
 
-CREATE POLICY "categories_insert" ON public.categories
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "categories_update" ON public.categories
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "categories_delete" ON public.categories
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "categories_select" ON public.categories FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "categories_insert" ON public.categories FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "categories_update" ON public.categories FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "categories_delete" ON public.categories FOR DELETE USING (auth.uid() = user_id);
 
 -- =============================================
 -- 5. 인덱스
 -- =============================================
-CREATE INDEX IF NOT EXISTS idx_transactions_user_date
-  ON public.transactions(user_id, date);
-
-CREATE INDEX IF NOT EXISTS idx_categories_user_type
-  ON public.categories(user_id, type);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_date ON public.transactions(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_categories_user_type   ON public.categories(user_id, type);
