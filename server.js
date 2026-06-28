@@ -22,10 +22,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  global: { fetch: fetch },
-  realtime: { transport: ws },
-});
+const supabaseOpts = { realtime: { transport: ws } };
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, supabaseOpts);
 
 app.use(cors());
 app.use(express.json());
@@ -76,7 +74,7 @@ async function requireAuth(req, res, next) {
   const anonClient = createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
-    { global: { headers: { Authorization: `Bearer ${token}` } } }
+    { ...supabaseOpts, global: { headers: { Authorization: `Bearer ${token}` } } }
   );
   const { data: { user }, error } = await anonClient.auth.getUser();
   if (error || !user)
@@ -106,7 +104,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ error: '이메일과 비밀번호를 입력하세요.' });
 
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, supabaseOpts);
   const { data, error } = await anonClient.auth.signInWithPassword({ email, password });
   if (error) return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
   res.json({
@@ -119,7 +117,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/refresh', async (req, res) => {
   const { refresh_token } = req.body;
   if (!refresh_token) return res.status(400).json({ error: 'refresh_token이 필요합니다.' });
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, supabaseOpts);
   const { data, error } = await anonClient.auth.refreshSession({ refresh_token });
   if (error) return res.status(401).json({ error: error.message });
   res.json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
