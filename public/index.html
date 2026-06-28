@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#b39ddb">
+<meta name="theme-color" content="#C9B8E8">
 <title>가계부</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png">
+<link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -281,12 +283,84 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .color-option.selected { border-color: var(--text); transform: scale(1.15); }
 
 /* =============================================
+   카테고리 관리 패널
+   ============================================= */
+.cat-mgmt-panel { position: fixed; inset: 0; background: var(--bg); z-index: 150; display: none; flex-direction: column; }
+.cat-mgmt-panel.visible { display: flex; }
+.panel-header { background: var(--surface); padding: 0 16px; height: var(--header-h); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.panel-title { font-size: 17px; font-weight: 700; }
+.panel-back { width: 36px; height: 36px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text2); }
+.panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 80px; }
+.cat-type-tabs { display: flex; gap: 4px; padding: 12px 16px 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+.cat-type-tab { padding: 7px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--text2); background: transparent; transition: all .2s; }
+.cat-type-tab.active { background: var(--primary); color: #fff; }
+.cat-list-section { padding: 12px 16px; }
+.cat-row { background: var(--surface); border-radius: 14px; margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow); }
+.cat-row-main { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.cat-row-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.cat-row-name { flex: 1; font-size: 14px; font-weight: 600; }
+.cat-row-name.inactive { color: var(--text3); text-decoration: line-through; }
+.cat-row-btns { display: flex; gap: 6px; align-items: center; }
+.cat-act-btn { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); color: var(--text2); font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.toggle-switch { width: 40px; height: 22px; border-radius: 11px; background: var(--border); position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+.toggle-switch.on { background: var(--primary); }
+.toggle-knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform .2s; }
+.toggle-switch.on .toggle-knob { transform: translateX(18px); }
+.cat-subs-row { padding: 0 14px 10px 60px; display: flex; flex-wrap: wrap; gap: 6px; }
+.sub-chip { font-size: 11px; color: var(--text2); background: var(--surface2); border-radius: 12px; padding: 3px 10px; }
+.sub-chip.del-sub { cursor: pointer; }
+.sub-chip.del-sub::after { content: ' ✕'; }
+.btn-add-cat { width: calc(100% - 32px); margin: 0 16px 16px; background: transparent; border: 1.5px dashed var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; }
+
+/* 카테고리 편집 시트 */
+.cat-edit-sheet-body { display: flex; flex-direction: column; gap: 14px; }
+.icon-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
+.icon-option { width: 100%; aspect-ratio: 1; border-radius: 10px; background: var(--surface2); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid transparent; transition: all .15s; }
+.icon-option.selected { border-color: var(--primary-dark); background: var(--primary-light); }
+.cat-color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.cat-color-option { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all .15s; }
+.cat-color-option.selected { border-color: var(--text); transform: scale(1.15); }
+.sub-input-row { display: flex; gap: 8px; align-items: center; }
+.sub-input-row input { flex: 1; }
+.sub-input-row button { flex-shrink: 0; padding: 10px 14px; background: var(--primary-light); color: var(--primary-dark); border-radius: 10px; font-size: 13px; font-weight: 600; }
+.active-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.active-toggle-label { font-size: 14px; font-weight: 500; }
+
+/* =============================================
    Coming soon
    ============================================= */
 .coming-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 12px; color: var(--text3); }
 .coming-soon-icon { font-size: 56px; }
 .coming-soon-text { font-size: 16px; font-weight: 600; }
 .coming-soon-sub { font-size: 13px; }
+
+/* =============================================
+   주간리포트
+   ============================================= */
+.weekly-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 16px 16px 8px; }
+.weekly-day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 0 10px 16px; }
+.weekly-day-col { background: var(--surface); border-radius: 12px; padding: 8px 6px; border: 1px solid var(--border); min-height: 80px; }
+.weekly-day-col.weekend { background: #fef6ff; }
+.weekly-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text2); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.weekly-day-col.weekend .weekly-day-header { color: var(--primary-dark); }
+.weekly-tx-item { font-size: 10px; line-height: 1.3; margin-bottom: 4px; }
+.weekly-tx-content { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.weekly-tx-amount { font-weight: 600; }
+.weekly-tx-amount.income { color: var(--income-color); }
+.weekly-tx-amount.expense { color: var(--expense-color); }
+.weekly-day-total { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); text-align: center; }
+.weekly-day-total .inc { font-size: 10px; color: var(--income-color); font-weight: 600; }
+.weekly-day-total .exp { font-size: 10px; color: var(--expense-color); font-weight: 600; }
+.weekly-summary { background: var(--surface); margin: 0 10px 12px; border-radius: 14px; padding: 14px; border: 1px solid var(--border); }
+.weekly-summary-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.weekly-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.weekly-cat-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.weekly-cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.weekly-cat-name { color: var(--text2); flex: 1; }
+.weekly-cat-amt { font-weight: 600; color: var(--text); }
+.weekly-total-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.weekly-total-label { font-size: 13px; font-weight: 700; color: var(--text2); }
+.weekly-total-amt { font-size: 15px; font-weight: 700; color: var(--expense-color); }
 
 /* =============================================
    자산관리 탭 — 대시보드
@@ -557,11 +631,19 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 
       <!-- 주간리포트 -->
       <div id="subtab-weekly" style="display:none">
-        <div class="coming-soon">
-          <div class="coming-soon-icon">📊</div>
-          <div class="coming-soon-text">주간리포트</div>
-          <div class="coming-soon-sub">다음 업데이트에서 제공됩니다</div>
+        <div class="weekly-nav">
+          <button class="month-nav-btn" onclick="weeklyChangeWeek(-1)">←</button>
+          <span class="month-label" id="weekly-label">2026.06 1주차</span>
+          <button class="month-nav-btn" onclick="weeklyChangeWeek(1)">→</button>
         </div>
+        <div id="weekly-range" style="text-align:center;font-size:12px;color:var(--text2);margin-top:-8px;margin-bottom:12px;"></div>
+        <div id="weekly-content">
+          <div class="coming-soon"><div class="coming-soon-icon">📊</div><div class="coming-soon-text">불러오는 중...</div></div>
+        </div>
+        <div style="padding:16px;padding-top:8px;">
+          <button class="btn-primary" onclick="downloadWeeklyReport()" id="weekly-download-btn" style="display:none;">이미지로 저장 (1080px)</button>
+        </div>
+        <canvas id="weekly-canvas" style="display:none;"></canvas>
       </div>
     </div>
 
@@ -631,6 +713,20 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
           <div>
             <div class="user-email" id="user-email-display">user@example.com</div>
             <div class="user-since">가계부 앱</div>
+          </div>
+        </div>
+
+        <div class="settings-title">카테고리 관리</div>
+        <div class="settings-card">
+          <div class="settings-item" onclick="openCatMgmt('expense')">
+            <span class="settings-item-icon">🏷️</span>
+            <span class="settings-item-label">지출 카테고리</span>
+            <span class="settings-item-arrow">›</span>
+          </div>
+          <div class="settings-item" onclick="openCatMgmt('income')">
+            <span class="settings-item-icon">🏷️</span>
+            <span class="settings-item-label">수입 카테고리</span>
+            <span class="settings-item-arrow">›</span>
           </div>
         </div>
 
@@ -977,6 +1073,66 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 <div class="toast" id="toast"></div>
 
 <!-- =============================================
+     카테고리 관리 패널
+     ============================================= -->
+<div class="cat-mgmt-panel" id="cat-mgmt-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeCatMgmt()">←</button>
+    <div class="panel-title" id="cat-mgmt-title">지출 카테고리</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="cat-type-tabs">
+    <button class="cat-type-tab active" id="cat-tab-expense" onclick="switchCatTab('expense')">지출</button>
+    <button class="cat-type-tab" id="cat-tab-income" onclick="switchCatTab('income')">수입</button>
+  </div>
+  <div class="panel-body">
+    <div class="cat-list-section" id="cat-list-section"></div>
+    <button class="btn-add-cat" onclick="openCatEdit(null)">+ 카테고리 추가</button>
+  </div>
+</div>
+
+<!-- 카테고리 편집 시트 -->
+<div class="bottom-sheet-overlay" id="cat-edit-overlay" onclick="closeCatEdit()"></div>
+<div class="bottom-sheet" id="cat-edit-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title" id="cat-edit-title">카테고리 추가</div>
+    <button class="sheet-close" onclick="closeCatEdit()">✕</button>
+  </div>
+  <div class="sheet-body cat-edit-sheet-body">
+    <div class="form-row">
+      <label>이름</label>
+      <input type="text" id="cat-edit-name" placeholder="카테고리 이름">
+    </div>
+    <div class="form-row">
+      <label>아이콘</label>
+      <div class="icon-picker-grid" id="cat-icon-picker"></div>
+    </div>
+    <div class="form-row">
+      <label>색상</label>
+      <div class="cat-color-picker" id="cat-color-picker"></div>
+    </div>
+    <div class="form-row" id="cat-active-row" style="display:none">
+      <div class="active-toggle-row">
+        <span class="active-toggle-label">활성화</span>
+        <div class="toggle-switch on" id="cat-active-toggle" onclick="toggleCatActive()">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row" id="cat-subs-section">
+      <label>소분류</label>
+      <div id="cat-edit-subs-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+      <div class="sub-input-row">
+        <input type="text" id="cat-sub-input" placeholder="소분류 이름 입력" onkeydown="if(event.key==='Enter'){addSubInEdit();event.preventDefault();}">
+        <button onclick="addSubInEdit()">추가</button>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveCatEdit()">저장</button>
+  </div>
+</div>
+
+<!-- =============================================
      JavaScript
      ============================================= -->
 <script>
@@ -1014,26 +1170,56 @@ const state = {
 // =============================================
 // 카테고리 & 상수
 // =============================================
-const CATEGORIES = {
+let CATEGORIES = {
   expense: [
-    { name: '식비', color: '#FFB5A7', subs: ['식료품', '외식', '카페·음료'] },
-    { name: '교통', color: '#A8D8EA', subs: ['대중교통', '주유', '주차'] },
-    { name: '주거', color: '#C9B8E8', subs: ['월세·관리비', '전기·가스·수도', '인터넷·통신'] },
-    { name: '쇼핑', color: '#B5EAD7', subs: ['의류', '생활용품', '온라인쇼핑'] },
-    { name: '의료·건강', color: '#C7E8A0', subs: ['병원', '약국', '헬스·운동'] },
-    { name: '문화·여가', color: '#FFDAC1', subs: ['구독서비스', '여행', '취미'] },
-    { name: '교육', color: '#E2C4F0', subs: ['학원', '도서', '강의'] },
-    { name: '경조사', color: '#FFD6E0', subs: ['축의금·조의금', '선물'] },
-    { name: '저축', color: '#b8e0d2', subs: ['적금', '비상금'], excluded: true },
-    { name: '투자', color: '#c8d8e4', subs: ['주식·ETF', '코인', '펀드'], excluded: true },
-    { name: '기타 지출', color: '#D9D9D9', subs: [] },
+    { name: '식비', icon: '🍽', color: '#FFB5A7', subs: ['식료품', '외식', '카페·음료'] },
+    { name: '교통', icon: '🚌', color: '#A8D8EA', subs: ['대중교통', '주유', '주차'] },
+    { name: '주거', icon: '🏠', color: '#C9B8E8', subs: ['월세·관리비', '전기·가스·수도', '인터넷·통신'] },
+    { name: '쇼핑', icon: '🛍', color: '#B5EAD7', subs: ['의류', '생활용품', '온라인쇼핑'] },
+    { name: '의료·건강', icon: '💊', color: '#C7E8A0', subs: ['병원', '약국', '헬스·운동'] },
+    { name: '문화·여가', icon: '🎬', color: '#FFDAC1', subs: ['구독서비스', '여행', '취미'] },
+    { name: '교육', icon: '📚', color: '#E2C4F0', subs: ['학원', '도서', '강의'] },
+    { name: '경조사', icon: '🎁', color: '#FFD6E0', subs: ['축의금·조의금', '선물'] },
+    { name: '저축', icon: '💰', color: '#b8e0d2', subs: ['적금', '비상금'], excluded: true },
+    { name: '투자', icon: '📈', color: '#c8d8e4', subs: ['주식·ETF', '코인', '펀드'], excluded: true },
+    { name: '기타 지출', icon: '📦', color: '#D9D9D9', subs: [] },
   ],
   income: [
-    { name: '근로소득', color: '#A0C4FF', subs: ['월급', '상여금', '부수입'] },
-    { name: '금융소득', color: '#B5D5FF', subs: ['이자', '배당'] },
-    { name: '기타 수입', color: '#D0E8FF', subs: ['용돈', '환급', '판매'] },
+    { name: '근로소득', icon: '💼', color: '#A0C4FF', subs: ['월급', '상여금', '부수입'] },
+    { name: '금융소득', icon: '🏦', color: '#B5D5FF', subs: ['이자', '배당'] },
+    { name: '기타 수입', icon: '🌱', color: '#D0E8FF', subs: ['용돈', '환급', '판매'] },
   ],
 };
+
+// DB에서 로드된 카테고리 원본 (id 포함)
+let _dbCategories = [];
+
+function rebuildCategories(dbRows) {
+  _dbCategories = dbRows;
+  const parents = dbRows.filter(r => !r.parent);
+  const expense = [], income = [];
+  parents.sort((a, b) => a.sort_order - b.sort_order || a.created_at?.localeCompare(b.created_at || '') || 0);
+  parents.forEach(p => {
+    const subs = dbRows.filter(r => r.parent === p.name && r.is_active).map(r => r.name);
+    const entry = { name: p.name, icon: p.icon || '📦', color: p.color || '#D9D9D9', subs, is_active: p.is_active, id: p.id };
+    if (p.type === 'excluded') { entry.excluded = true; expense.push(entry); }
+    else if (p.type === 'expense') expense.push(entry);
+    else if (p.type === 'income') income.push(entry);
+  });
+  CATEGORIES.expense = expense.filter(c => c.is_active !== false);
+  CATEGORIES.income = income.filter(c => c.is_active !== false);
+  // Keep excluded ones for display but flag them
+  CATEGORIES._allExpense = expense;
+  CATEGORIES._allIncome = income;
+}
+
+async function loadCategories() {
+  try {
+    await api('POST', '/api/categories/seed', {});
+    const rows = await api('GET', '/api/categories');
+    rebuildCategories(rows);
+  } catch (e) { /* fallback to defaults */ }
+}
 
 const PAYMENT_METHODS = ['신용카드', '체크카드', '현금', '카카오페이', '네이버페이', '토스', '계좌이체', '기타'];
 
@@ -1064,7 +1250,11 @@ function dateStr(y, m, d) { return `${y}-${String(m).padStart(2, '0')}-${String(
 function showToast(msg, ms = 2200) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), ms); }
 function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function getCatColor(name) { for (const list of Object.values(CATEGORIES)) { const f = list.find(c => c.name === name); if (f) return f.color; } return '#D9D9D9'; }
-function isExcluded(cat) { return CATEGORIES.expense.filter(c => c.excluded).map(c => c.name).includes(cat); }
+function isExcluded(cat) {
+  if (_dbCategories.length > 0)
+    return _dbCategories.some(r => !r.parent && r.name === cat && r.type === 'excluded');
+  return CATEGORIES.expense.filter(c => c.excluded).map(c => c.name).includes(cat);
+}
 
 // =============================================
 // 인증
@@ -1123,6 +1313,7 @@ function enterApp() {
   }
   // 병렬 초기화
   Promise.all([
+    loadCategories(),
     loadCards(),
     generateFixedExpenses(),
   ]).then(() => {
@@ -1955,6 +2146,7 @@ function showSubTab(tab) {
     b.classList.toggle('active', ['calendar', 'fixed', 'weekly'][i] === tab)
   );
   if (tab === 'fixed') renderFixedList();
+  if (tab === 'weekly') initWeeklyReport();
 }
 
 // =============================================
@@ -2528,6 +2720,211 @@ async function saveCard() {
   } catch (e) { showToast(e.message); }
 }
 
+// =============================================
+// 카테고리 관리
+// =============================================
+const ICON_SET = [
+  '🍽','🍜','🥤','🍕','☕','🛒','🍺','🥗','🍱','🧃',
+  '🚌','🚗','⛽','✈️','🚲','🚕','🛵','🚢',
+  '🏠','💡','📱','🔧','🛁','🏢',
+  '👗','👟','💄','🎒','🛍','👔',
+  '💊','🏥','🏋','🧘','🌿','🩺',
+  '🎬','🎵','🎮','📸','🎭','🎨',
+  '📚','🎓','📖','✏️',
+  '🎁','🎂','💐','🎊',
+  '💰','📈','🏦','💳','💵',
+  '🐾','🐕','🐱',
+  '📦','⚙️','🔖','🌐','🎯','🌱','💼',
+];
+
+const CAT_PALETTE = [
+  '#FFB5A7','#A8D8EA','#C9B8E8','#B5EAD7','#C7E8A0','#FFDAC1',
+  '#E2C4F0','#FFD6E0','#D9D9D9','#b8e0d2','#c8d8e4','#A0C4FF',
+  '#B5D5FF','#D0E8FF','#FFF3B0','#FFD6A5','#CAFFBF','#9BF6FF',
+  '#BDB2FF','#FFC6FF','#FDFFB6','#E8E8E8',
+];
+
+let catMgmtTab = 'expense';
+let catEditState = { id: null, type: 'expense', subs: [], isActive: true, selectedIcon: null, selectedColor: null };
+
+function openCatMgmt(type = 'expense') {
+  catMgmtTab = type;
+  document.getElementById('cat-mgmt-panel').classList.add('visible');
+  switchCatTab(type);
+}
+function closeCatMgmt() {
+  document.getElementById('cat-mgmt-panel').classList.remove('visible');
+}
+
+function switchCatTab(type) {
+  catMgmtTab = type;
+  document.getElementById('cat-tab-expense').classList.toggle('active', type === 'expense');
+  document.getElementById('cat-tab-income').classList.toggle('active', type === 'income');
+  document.getElementById('cat-mgmt-title').textContent = type === 'expense' ? '지출 카테고리' : '수입 카테고리';
+  renderCatMgmtList();
+}
+
+function renderCatMgmtList() {
+  const el = document.getElementById('cat-list-section');
+  el.innerHTML = '';
+  const parents = _dbCategories.filter(r => !r.parent && (r.type === catMgmtTab || (catMgmtTab === 'expense' && r.type === 'excluded')));
+  parents.sort((a, b) => a.sort_order - b.sort_order);
+  if (parents.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px">카테고리가 없습니다</div>';
+    return;
+  }
+  parents.forEach(p => {
+    const subs = _dbCategories.filter(r => r.parent === p.name);
+    const isOn = p.is_active;
+    const div = document.createElement('div');
+    div.className = 'cat-row';
+    div.innerHTML = `
+      <div class="cat-row-main">
+        <div class="cat-row-icon" style="background:${p.color || '#eee'}22">${p.icon || '📦'}</div>
+        <div class="cat-row-name${isOn ? '' : ' inactive'}">${escHtml(p.name)}${p.type === 'excluded' ? ' <span style="font-size:10px;color:var(--text3)">(통계 제외)</span>' : ''}</div>
+        <div class="cat-row-btns">
+          <button class="cat-act-btn" onclick="openCatEdit('${p.id}')">✏️</button>
+          <div class="toggle-switch${isOn ? ' on' : ''}" onclick="toggleCatRow('${p.id}',${isOn})">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+      ${subs.length ? `<div class="cat-subs-row">${subs.map(s => `<span class="sub-chip">${escHtml(s.name)}</span>`).join('')}</div>` : ''}`;
+    el.appendChild(div);
+  });
+}
+
+async function toggleCatRow(id, currentOn) {
+  try {
+    await api('PUT', `/api/categories/${id}`, { is_active: !currentOn });
+    const rows = await api('GET', '/api/categories');
+    rebuildCategories(rows);
+    renderCatMgmtList();
+    showToast(currentOn ? '비활성화되었습니다.' : '활성화되었습니다.');
+  } catch (e) { showToast(e.message); }
+}
+
+function openCatEdit(id) {
+  const p = id ? _dbCategories.find(r => r.id === id) : null;
+  catEditState = {
+    id: id || null,
+    type: p ? p.type : catMgmtTab,
+    subs: id ? _dbCategories.filter(r => r.parent === (p ? p.name : '')).map(r => ({ id: r.id, name: r.name })) : [],
+    isActive: p ? p.is_active : true,
+    selectedIcon: p ? p.icon : ICON_SET[0],
+    selectedColor: p ? p.color : CAT_PALETTE[0],
+  };
+  document.getElementById('cat-edit-title').textContent = id ? '카테고리 수정' : '카테고리 추가';
+  document.getElementById('cat-edit-name').value = p ? p.name : '';
+  document.getElementById('cat-active-row').style.display = id ? '' : 'none';
+  const toggle = document.getElementById('cat-active-toggle');
+  toggle.classList.toggle('on', catEditState.isActive);
+
+  renderIconPicker();
+  renderCatColorPicker();
+  renderEditSubsList();
+
+  document.getElementById('cat-edit-overlay').classList.add('visible');
+  document.getElementById('cat-edit-sheet').classList.add('visible');
+}
+
+function closeCatEdit() {
+  document.getElementById('cat-edit-overlay').classList.remove('visible');
+  document.getElementById('cat-edit-sheet').classList.remove('visible');
+}
+
+function toggleCatActive() {
+  catEditState.isActive = !catEditState.isActive;
+  document.getElementById('cat-active-toggle').classList.toggle('on', catEditState.isActive);
+}
+
+function renderIconPicker() {
+  const el = document.getElementById('cat-icon-picker');
+  el.innerHTML = '';
+  ICON_SET.forEach(icon => {
+    const btn = document.createElement('button');
+    btn.className = 'icon-option' + (catEditState.selectedIcon === icon ? ' selected' : '');
+    btn.textContent = icon;
+    btn.onclick = () => { catEditState.selectedIcon = icon; renderIconPicker(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderCatColorPicker() {
+  const el = document.getElementById('cat-color-picker');
+  el.innerHTML = '';
+  CAT_PALETTE.forEach(color => {
+    const div = document.createElement('div');
+    div.className = 'cat-color-option' + (catEditState.selectedColor === color ? ' selected' : '');
+    div.style.background = color;
+    div.onclick = () => { catEditState.selectedColor = color; renderCatColorPicker(); };
+    el.appendChild(div);
+  });
+}
+
+function renderEditSubsList() {
+  const el = document.getElementById('cat-edit-subs-list');
+  el.innerHTML = '';
+  catEditState.subs.forEach((s, i) => {
+    const span = document.createElement('span');
+    span.className = 'sub-chip del-sub';
+    span.textContent = s.name;
+    span.onclick = () => { catEditState.subs.splice(i, 1); renderEditSubsList(); };
+    el.appendChild(span);
+  });
+}
+
+function addSubInEdit() {
+  const input = document.getElementById('cat-sub-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (catEditState.subs.find(s => s.name === name)) { showToast('이미 있는 소분류입니다.'); return; }
+  catEditState.subs.push({ id: null, name });
+  input.value = '';
+  renderEditSubsList();
+}
+
+async function saveCatEdit() {
+  const name = document.getElementById('cat-edit-name').value.trim();
+  if (!name) return showToast('카테고리 이름을 입력하세요.');
+  try {
+    let parentId = catEditState.id;
+    let parentName = name;
+    if (catEditState.id) {
+      // 수정
+      const prev = _dbCategories.find(r => r.id === catEditState.id);
+      const prevName = prev?.name;
+      await api('PUT', `/api/categories/${catEditState.id}`, {
+        name, icon: catEditState.selectedIcon, color: catEditState.selectedColor,
+        is_active: catEditState.isActive,
+      });
+      // 이름이 바뀌면 소분류 parent도 업데이트 필요 (현재는 DB에서 name 기준이라 새로 삽입)
+      parentName = name;
+    } else {
+      // 신규
+      const maxOrder = Math.max(0, ..._dbCategories.filter(r => !r.parent && (r.type === catEditState.type || (catEditState.type === 'expense'))).map(r => r.sort_order || 0));
+      const created = await api('POST', '/api/categories', {
+        type: catEditState.type, name, icon: catEditState.selectedIcon,
+        color: catEditState.selectedColor, sort_order: maxOrder + 1,
+      });
+      parentId = created.id;
+      parentName = name;
+    }
+    // 소분류 동기화: 기존 삭제 후 현재 목록으로 재삽입
+    const existingSubs = _dbCategories.filter(r => r.parent === (catEditState.id ? _dbCategories.find(p => p.id === catEditState.id)?.name : parentName) && r.parent);
+    for (const s of existingSubs) await api('DELETE', `/api/categories/${s.id}`);
+    for (let i = 0; i < catEditState.subs.length; i++) {
+      const s = catEditState.subs[i];
+      await api('POST', '/api/categories', { type: catEditState.type, name: s.name, parent: name, sort_order: i });
+    }
+    const rows = await api('GET', '/api/categories');
+    rebuildCategories(rows);
+    renderCatMgmtList();
+    closeCatEdit();
+    showToast(catEditState.id ? '저장되었습니다.' : '카테고리가 추가되었습니다.');
+  } catch (e) { showToast(e.message); }
+}
+
 function renderCardListSettings() {
   const el = document.getElementById('cards-settings-list');
   el.innerHTML = '';
@@ -2594,6 +2991,346 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
     }
   } catch (e) { showToast(e.message); }
 };
+
+// =============================================
+// 주간리포트
+// =============================================
+const weeklyState = { weekStart: null, data: null };
+
+function getMondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getDefaultWeekStart() {
+  const today = new Date();
+  const thisMonday = getMondayOf(today);
+  const prevMonday = new Date(thisMonday);
+  prevMonday.setDate(thisMonday.getDate() - 7);
+  return prevMonday;
+}
+
+function dateToStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getWeekLabel(monDate) {
+  const y = monDate.getFullYear();
+  const m = monDate.getMonth() + 1;
+  let weekNum = 0;
+  const d = new Date(y, m - 1, 1);
+  while (d <= monDate) {
+    if (d.getDay() === 1) weekNum++;
+    d.setDate(d.getDate() + 1);
+  }
+  if (weekNum === 0) weekNum = 1;
+  return `${y}.${String(m).padStart(2,'0')} ${weekNum}주차`;
+}
+
+function initWeeklyReport() {
+  if (!weeklyState.weekStart) weeklyState.weekStart = getDefaultWeekStart();
+  renderWeeklyNav();
+  loadWeeklyReport();
+}
+
+function weeklyChangeWeek(dir) {
+  const d = new Date(weeklyState.weekStart);
+  d.setDate(d.getDate() + dir * 7);
+  weeklyState.weekStart = d;
+  weeklyState.data = null;
+  renderWeeklyNav();
+  loadWeeklyReport();
+}
+
+function renderWeeklyNav() {
+  const ws = weeklyState.weekStart;
+  document.getElementById('weekly-label').textContent = getWeekLabel(ws);
+  const sunDate = new Date(ws);
+  sunDate.setDate(ws.getDate() + 6);
+  const fmtD = d => `${d.getMonth()+1}.${d.getDate()}`;
+  document.getElementById('weekly-range').textContent = `${fmtD(ws)} – ${fmtD(sunDate)}`;
+}
+
+async function loadWeeklyReport() {
+  document.getElementById('weekly-content').innerHTML =
+    '<div class="coming-soon"><div class="coming-soon-icon">📊</div><div class="coming-soon-text">불러오는 중...</div></div>';
+  document.getElementById('weekly-download-btn').style.display = 'none';
+  try {
+    const ws = dateToStr(weeklyState.weekStart);
+    const res = await fetch(`/api/weekly-report?week_start=${ws}`, {
+      headers: { Authorization: `Bearer ${state.token}` }
+    });
+    if (!res.ok) throw new Error('로드 실패');
+    weeklyState.data = await res.json();
+    renderWeeklyReport();
+  } catch (e) {
+    document.getElementById('weekly-content').innerHTML =
+      `<div class="coming-soon"><div class="coming-soon-text">${e.message}</div></div>`;
+  }
+}
+
+const CAT_COLORS_WEEKLY = {
+  '식비': '#FFB5A7', '교통': '#A8D8EA', '주거': '#C9B8E8', '쇼핑': '#B5EAD7',
+  '의료건강': '#C7E8A0', '문화여가': '#FFDAC1', '교육': '#E2C4F0',
+  '경조사': '#FFD6E0', '기타지출': '#D9D9D9', '근로소득': '#A0C4FF',
+  '금융소득': '#B0E2FF', '기타수입': '#B8F0C8'
+};
+
+function renderWeeklyReport() {
+  const data = weeklyState.data;
+  if (!data) return;
+
+  const DAYS_KO = ['월', '화', '수', '목', '금', '토', '일'];
+  let cols = '';
+  data.days.forEach((day, i) => {
+    const isWeekend = i >= 5;
+    const d = new Date(day.date + 'T00:00:00');
+    const dayNum = d.getDate();
+    let txsHtml = '';
+    day.transactions.forEach(t => {
+      const isIncome = t.type === 'income';
+      const sign = isIncome ? '+' : '-';
+      txsHtml += `<div class="weekly-tx-item">
+        <div class="weekly-tx-content">${escHtml(t.content)}</div>
+        <div class="weekly-tx-amount ${isIncome ? 'income' : 'expense'}">${sign}${fmt(t.amount)}</div>
+      </div>`;
+    });
+    const totalHtml = (day.income > 0 || day.expense > 0) ? `
+      <div class="weekly-day-total">
+        ${day.income > 0 ? `<div class="inc">+${fmt(day.income)}</div>` : ''}
+        ${day.expense > 0 ? `<div class="exp">-${fmt(day.expense)}</div>` : ''}
+      </div>` : '';
+    cols += `<div class="weekly-day-col${isWeekend ? ' weekend' : ''}">
+      <div class="weekly-day-header">${DAYS_KO[i]}<br>${dayNum}</div>
+      ${txsHtml}${totalHtml}
+    </div>`;
+  });
+
+  let catsHtml = '';
+  data.categories.forEach(c => {
+    const color = CAT_COLORS_WEEKLY[c.name] || '#D9D9D9';
+    catsHtml += `<div class="weekly-cat-item">
+      <div class="weekly-cat-dot" style="background:${color}"></div>
+      <div class="weekly-cat-name">${escHtml(c.name)}</div>
+      <div class="weekly-cat-amt">${fmt(c.amount)}원</div>
+    </div>`;
+  });
+
+  document.getElementById('weekly-content').innerHTML = `
+    <div class="weekly-day-grid">${cols}</div>
+    <div class="weekly-summary">
+      <div class="weekly-summary-title">카테고리별 지출</div>
+      <div class="weekly-cat-grid">${catsHtml || '<div style="color:var(--text3);font-size:13px">지출 없음</div>'}</div>
+      <div class="weekly-total-row">
+        <span class="weekly-total-label">주간 총 지출</span>
+        <span class="weekly-total-amt">${fmt(data.totalExpense)}원</span>
+      </div>
+    </div>`;
+
+  document.getElementById('weekly-download-btn').style.display = '';
+}
+
+async function downloadWeeklyReport() {
+  const data = weeklyState.data;
+  if (!data) return;
+
+  const W = 1080;
+  const PAD = 40;
+  const COL_W = Math.floor((W - PAD * 2) / 7);
+  const HEADER_H = 110;
+  const DAY_HEADER_H = 52;
+  const TX_H = 42;
+  const DAY_FOOTER_H = 44;
+  const CAT_ROW_H = 36;
+  const SUMMARY_PAD = 24;
+
+  const maxTxs = Math.max(...data.days.map(d => d.transactions.length), 0);
+  const colH = DAY_HEADER_H + Math.max(maxTxs, 1) * TX_H + DAY_FOOTER_H;
+  const catRows = Math.ceil(data.categories.length / 2) || 1;
+  const summaryH = SUMMARY_PAD * 2 + 28 + catRows * CAT_ROW_H + 50;
+  const totalH = HEADER_H + 20 + colH + 20 + summaryH + 40;
+
+  const canvas = document.getElementById('weekly-canvas');
+  canvas.width = W;
+  canvas.height = totalH;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#f8f4ff';
+  ctx.fillRect(0, 0, W, totalH);
+
+  const grad = ctx.createLinearGradient(0, 0, W, HEADER_H);
+  grad.addColorStop(0, '#c5b3e8');
+  grad.addColorStop(1, '#b3d4f0');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, HEADER_H);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 36px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(getWeekLabel(weeklyState.weekStart), W / 2, 52);
+
+  const sunDate = new Date(weeklyState.weekStart);
+  sunDate.setDate(weeklyState.weekStart.getDate() + 6);
+  const fmtDL = d => `${d.getMonth()+1}월 ${d.getDate()}일`;
+  ctx.font = '20px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText(`${fmtDL(weeklyState.weekStart)} – ${fmtDL(sunDate)}`, W / 2, 86);
+
+  const colsY = HEADER_H + 20;
+  const DAYS_KO = ['월', '화', '수', '목', '금', '토', '일'];
+
+  data.days.forEach((day, i) => {
+    const x = PAD + i * COL_W;
+    const isWeekend = i >= 5;
+
+    ctx.fillStyle = isWeekend ? '#fef0ff' : '#ffffff';
+    wRoundRect(ctx, x, colsY, COL_W - 6, colH, 14);
+    ctx.fill();
+    ctx.strokeStyle = isWeekend ? '#e8d4f0' : '#eee8f8';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const d = new Date(day.date + 'T00:00:00');
+    ctx.fillStyle = isWeekend ? '#9c5fc8' : '#7e57c2';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(DAYS_KO[i], x + (COL_W - 6) / 2, colsY + 24);
+    ctx.fillStyle = '#555';
+    ctx.font = '14px sans-serif';
+    ctx.fillText(d.getDate(), x + (COL_W - 6) / 2, colsY + 44);
+
+    ctx.strokeStyle = '#ebe4f6';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, colsY + DAY_HEADER_H - 4);
+    ctx.lineTo(x + COL_W - 14, colsY + DAY_HEADER_H - 4);
+    ctx.stroke();
+
+    day.transactions.forEach((t, ti) => {
+      const ty = colsY + DAY_HEADER_H + ti * TX_H;
+      const isInc = t.type === 'income';
+      const maxW = COL_W - 18;
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = '#444';
+      ctx.textAlign = 'left';
+      let content = t.content;
+      if (ctx.measureText(content).width > maxW) {
+        while (ctx.measureText(content + '…').width > maxW && content.length > 1)
+          content = content.slice(0, -1);
+        content += '…';
+      }
+      ctx.fillText(content, x + 8, ty + 16);
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = isInc ? '#5b9bd5' : '#e57373';
+      ctx.fillText((isInc ? '+' : '-') + fmt(t.amount) + '원', x + 8, ty + 30);
+    });
+
+    const footerY = colsY + colH - DAY_FOOTER_H;
+    ctx.strokeStyle = '#ebe4f6';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, footerY + 4);
+    ctx.lineTo(x + COL_W - 14, footerY + 4);
+    ctx.stroke();
+
+    const cx2 = x + (COL_W - 6) / 2;
+    ctx.textAlign = 'center';
+    if (day.income > 0 && day.expense > 0) {
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#5b9bd5';
+      ctx.fillText('+' + fmt(day.income) + '원', cx2, footerY + 20);
+      ctx.fillStyle = '#e57373';
+      ctx.fillText('-' + fmt(day.expense) + '원', cx2, footerY + 34);
+    } else if (day.income > 0) {
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#5b9bd5';
+      ctx.fillText('+' + fmt(day.income) + '원', cx2, footerY + 26);
+    } else if (day.expense > 0) {
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#e57373';
+      ctx.fillText('-' + fmt(day.expense) + '원', cx2, footerY + 26);
+    }
+  });
+
+  const sumY = colsY + colH + 20;
+  ctx.fillStyle = '#ffffff';
+  wRoundRect(ctx, PAD, sumY, W - PAD * 2, summaryH, 18);
+  ctx.fill();
+  ctx.strokeStyle = '#ebe4f6';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#2d2d2d';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('카테고리별 지출', PAD + SUMMARY_PAD, sumY + SUMMARY_PAD + 20);
+
+  const catGridY = sumY + SUMMARY_PAD + 36;
+  const halfW = (W - PAD * 2 - SUMMARY_PAD * 2) / 2;
+  data.categories.forEach((c, ci) => {
+    const col = ci % 2;
+    const row = Math.floor(ci / 2);
+    const cx3 = PAD + SUMMARY_PAD + col * halfW;
+    const cy3 = catGridY + row * CAT_ROW_H;
+    const color = CAT_COLORS_WEEKLY[c.name] || '#D9D9D9';
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cx3 + 7, cy3 + 12, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#6b6b8a';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(c.name, cx3 + 22, cy3 + 17);
+
+    ctx.fillStyle = '#2d2d2d';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(c.amount) + '원', cx3 + halfW - 8, cy3 + 17);
+  });
+
+  const totalRowY = catGridY + catRows * CAT_ROW_H + 12;
+  ctx.strokeStyle = '#ebe4f6';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD + SUMMARY_PAD, totalRowY);
+  ctx.lineTo(W - PAD - SUMMARY_PAD, totalRowY);
+  ctx.stroke();
+
+  ctx.fillStyle = '#6b6b8a';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('주간 총 지출', PAD + SUMMARY_PAD, totalRowY + 30);
+  ctx.fillStyle = '#e57373';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(fmt(data.totalExpense) + '원', W - PAD - SUMMARY_PAD, totalRowY + 30);
+
+  const link = document.createElement('a');
+  link.download = `weekly_report_${dateToStr(weeklyState.weekStart)}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('이미지 저장 완료!');
+}
+
+function wRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
 
 // =============================================
 // CSV 내보내기
