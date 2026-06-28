@@ -49,6 +49,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS transactions_updated_at ON public.transactions;
 CREATE TRIGGER transactions_updated_at
   BEFORE UPDATE ON public.transactions
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
