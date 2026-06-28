@@ -7,6 +7,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
+console.log('🔍 env keys:', Object.keys(process.env).filter(k => k.startsWith('SUPABASE')));
+
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
   console.error('❌ 환경변수 누락:', {
     SUPABASE_URL: !!SUPABASE_URL,
