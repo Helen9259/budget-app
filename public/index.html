@@ -1282,14 +1282,36 @@ const CARD_COLORS = ['#b39ddb', '#90caf9', '#a5d6a7', '#ffcc80', '#f48fb1', '#80
 // =============================================
 // API 헬퍼
 // =============================================
-async function api(method, path, body) {
+async function api(method, path, body, _retry = true) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(path, opts);
+  if (res.status === 401 && _retry) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) return api(method, path, body, false);
+    doLogout(); return;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || '오류가 발생했습니다.');
   return data;
+}
+
+async function tryRefreshToken() {
+  const rt = localStorage.getItem('refresh_token');
+  if (!rt) return false;
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    state.token = data.access_token;
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    return true;
+  } catch { return false; }
 }
 
 // =============================================
@@ -1330,6 +1352,7 @@ async function doLogin() {
     state.token = data.access_token;
     state.user = data.user;
     localStorage.setItem('token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token || '');
     localStorage.setItem('user', JSON.stringify(data.user));
     enterApp();
   } catch (e) { showAuthError(e.message); }
@@ -1353,7 +1376,7 @@ async function doSignup() {
 
 function doLogout() {
   state.token = null; state.user = null;
-  localStorage.removeItem('token'); localStorage.removeItem('user');
+  localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('user');
   document.getElementById('main-screen').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
 }
