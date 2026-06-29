@@ -914,19 +914,19 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
     <button class="sheet-close" onclick="closeCardSheet()">✕</button>
   </div>
   <div class="sheet-body">
-    <div class="form-row"><label>카드명 <span style="color:#e57373">*</span></label><input type="text" id="card-name" placeholder="예) 삼성카드, 현대카드"></div>
+    <div class="form-row"><label>카드명 <span style="color:#e57373">*</span></label><input type="text" id="card-name" placeholder="예) 삼성카드, 토스뱅크"></div>
     <div class="form-row">
+      <label>카드 종류</label>
+      <div class="form-type-toggle" style="margin-bottom:0">
+        <button class="type-btn" id="btn-card-credit" onclick="setCardType('credit')" style="background:var(--primary);color:#fff">신용카드</button>
+        <button class="type-btn" id="btn-card-debit" onclick="setCardType('debit')">체크카드</button>
+      </div>
+    </div>
+    <div class="form-row" id="card-limit-row">
       <label>월 한도 (0 = 한도 없음)</label>
       <div class="form-amount-wrap">
         <input type="text" id="card-limit" placeholder="0" inputmode="numeric" oninput="formatAmount(this)">
         <span class="form-amount-unit">원</span>
-      </div>
-    </div>
-    <div class="form-row">
-      <label>결제일 (매월 N일)</label>
-      <div class="day-input-row">
-        <input type="number" id="card-payment-day" min="1" max="31" placeholder="25">
-        <span>일</span>
       </div>
     </div>
     <div class="form-row">
@@ -1217,6 +1217,7 @@ const state = {
   // 카드 폼
   editingCardId: null,
   cardColor: '#b39ddb',
+  cardType: 'credit',
 };
 
 // =============================================
@@ -2323,14 +2324,14 @@ function renderCardSummary() {
           <div class="card-summary-amounts">${fmt(card.used)} / ${fmt(card.limit_amount)}</div>
         </div>
         <div class="progress-track"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
-        <div class="card-summary-remaining">${pct >= 100 ? '⚠️ 한도 초과!' : fmt(card.remaining) + ' 남음'} · 결제일 매월 ${card.payment_day}일</div>`;
+        <div class="card-summary-remaining">${pct >= 100 ? '⚠️ 한도 초과!' : fmt(card.remaining) + ' 남음'}</div>`;
     } else {
       div.innerHTML = `
         <div class="card-summary-row">
           <div class="card-summary-name"><span class="card-summary-dot" style="background:${escHtml(card.color)}"></span>${escHtml(card.name)}</div>
           <div class="card-summary-amounts">${fmt(card.used)} 사용</div>
         </div>
-        <div class="card-summary-remaining">한도 미설정 · 결제일 매월 ${card.payment_day}일</div>`;
+        <div class="card-summary-remaining">한도 미설정</div>`;
     }
     list.appendChild(div);
   });
@@ -2486,7 +2487,7 @@ function renderPaymentList() {
     el.appendChild(btn);
   });
   // 카드 선택 표시 여부
-  const showCard = state.formPayment === '신용카드';
+  const showCard = state.formPayment === '카드';
   document.getElementById('card-select-wrap').style.display = showCard ? '' : 'none';
   if (showCard) renderCardSelectList();
   else { state.formCardId = null; document.getElementById('card-usage-widget').style.display = 'none'; }
@@ -2515,6 +2516,10 @@ function updateCardUsageWidget() {
   if (!state.formCardId) { widget.style.display = 'none'; return; }
   const usage = state.cardUsage.find(u => u.id === state.formCardId);
   if (!usage) { widget.style.display = 'none'; return; }
+
+  // 체크카드는 한도 위젯 표시 안 함
+  if (usage.card_type === 'debit') { widget.style.display = 'none'; return; }
+
   widget.style.display = '';
   const pct = usage.limit_amount > 0 ? Math.min(100, Math.round(usage.used / usage.limit_amount * 100)) : 0;
   const overLimit = usage.limit_amount > 0 && usage.used >= usage.limit_amount;
@@ -2557,7 +2562,7 @@ async function saveTransaction() {
     category: state.formCat,
     subcategory: state.formSubcat || null,
     payment_method: state.formType === 'expense' ? (state.formPayment || null) : null,
-    credit_card_id: state.formType === 'expense' && state.formPayment === '신용카드' ? (state.formCardId || null) : null,
+    credit_card_id: state.formType === 'expense' && state.formPayment === '카드' ? (state.formCardId || null) : null,
     memo: memo || null, is_fixed: false,
   };
   try {
@@ -2647,8 +2652,8 @@ function renderFixedPaymentList() {
     btn.onclick = () => selectFixedPayment(p);
     el.appendChild(btn);
   });
-  document.getElementById('fixed-card-wrap').style.display = state.fixedPayment === '신용카드' ? '' : 'none';
-  if (state.fixedPayment === '신용카드') renderFixedCardList();
+  document.getElementById('fixed-card-wrap').style.display = state.fixedPayment === '카드' ? '' : 'none';
+  if (state.fixedPayment === '카드') renderFixedCardList();
 }
 function selectFixedPayment(p) { state.fixedPayment = p; state.fixedCardId = null; renderFixedPaymentList(); }
 
@@ -2678,7 +2683,7 @@ async function saveFixedExpense() {
     category: state.fixedCat,
     subcategory: state.fixedSubcat || null,
     payment_method: state.fixedPayment || null,
-    credit_card_id: state.fixedPayment === '신용카드' ? (state.fixedCardId || null) : null,
+    credit_card_id: state.fixedPayment === '카드' ? (state.fixedCardId || null) : null,
   };
   try {
     if (state.editingFixedId) { await api('PUT', `/api/fixed-expenses/${state.editingFixedId}`, body); showToast('수정되었습니다. 다음 달부터 새 금액이 적용됩니다.'); }
@@ -2721,20 +2726,27 @@ function renderFixedList() {
 // =============================================
 // 신용카드 폼
 // =============================================
+function setCardType(type) {
+  state.cardType = type;
+  document.getElementById('btn-card-credit').style.cssText = type === 'credit' ? 'background:var(--primary);color:#fff' : '';
+  document.getElementById('btn-card-debit').style.cssText = type === 'debit' ? 'background:var(--primary);color:#fff' : '';
+  document.getElementById('card-limit-row').style.display = type === 'credit' ? '' : 'none';
+}
+
 function openCardForm(id) {
   state.editingCardId = id || null;
   document.getElementById('card-form-title').textContent = id ? '카드 수정' : '카드 추가';
   document.getElementById('card-name').value = '';
   document.getElementById('card-limit').value = '';
-  document.getElementById('card-payment-day').value = '25';
   state.cardColor = '#b39ddb';
+  setCardType('credit');
   if (id) {
     const card = state.cards.find(c => c.id === id);
     if (card) {
       document.getElementById('card-name').value = card.name;
       document.getElementById('card-limit').value = card.limit_amount > 0 ? fmtInput(card.limit_amount) : '';
-      document.getElementById('card-payment-day').value = card.payment_day;
       state.cardColor = card.color;
+      setCardType(card.card_type || 'credit');
     }
   }
   renderColorPicker();
@@ -2760,11 +2772,9 @@ function renderColorPicker() {
 
 async function saveCard() {
   const name = document.getElementById('card-name').value.trim();
-  const limit_amount = parseAmt(document.getElementById('card-limit').value);
-  const payment_day = parseInt(document.getElementById('card-payment-day').value) || 25;
+  const limit_amount = state.cardType === 'credit' ? parseAmt(document.getElementById('card-limit').value) : 0;
   if (!name) return showToast('카드명을 입력하세요.');
-  if (payment_day < 1 || payment_day > 31) return showToast('결제일은 1~31 사이여야 합니다.');
-  const body = { name, limit_amount, payment_day, color: state.cardColor };
+  const body = { name, limit_amount, card_type: state.cardType, color: state.cardColor };
   try {
     if (state.editingCardId) { await api('PUT', `/api/credit-cards/${state.editingCardId}`, body); showToast('카드가 수정되었습니다.'); }
     else { await api('POST', '/api/credit-cards', body); showToast('카드가 추가되었습니다.'); }
@@ -2998,7 +3008,7 @@ function renderCardListSettings() {
       <div class="card-color-circle" style="background:${escHtml(card.color)}">💳</div>
       <div class="card-item-info">
         <div class="card-item-name">${escHtml(card.name)}</div>
-        <div class="card-item-sub">결제일 매월 ${card.payment_day}일${limitText ? ' · 한도 ' + fmt(card.limit_amount) : ''}</div>
+        <div class="card-item-sub">${card.card_type === 'debit' ? '체크카드' : '신용카드'}${card.limit_amount > 0 ? ' · 한도 ' + fmt(card.limit_amount) : ''}</div>
         ${usedText ? `<div class="card-item-sub">${usedText}${limitText}</div>` : ''}
       </div>
       <div class="card-item-btns">
@@ -3093,7 +3103,7 @@ function renderPayMgmtList() {
     div.dataset.idx = idx;
     div.dataset.id = m.id;
 
-    const isCreditCard = m.name === '신용카드';
+    const isCreditCard = m.name === '카드';
     div.innerHTML = `
       <span class="pay-drag-handle">⠿</span>
       <span class="pay-row-name">${escHtml(m.name)}</span>
