@@ -372,10 +372,19 @@ app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
   const results = [];
 
   for (const card of cards) {
-    const { start, end } = getBillingCycle(card.payment_day, now);
+    // 체크카드는 당월 기준, 신용카드는 결제일 기준
+    let start, end;
+    if (card.card_type === 'debit' || !card.payment_day) {
+      start = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    } else {
+      ({ start, end } = getBillingCycle(card.payment_day, now));
+    }
+
     const { data: txs } = await supabase
       .from('transactions').select('amount')
       .eq('user_id', req.user.id)
@@ -384,13 +393,15 @@ app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
       .gte('date', start).lte('date', end);
 
     const used = (txs || []).reduce((s, t) => s + t.amount, 0);
+    const limitAmt = card.card_type === 'debit' ? 0 : (card.limit_amount || 0);
     results.push({
       id: card.id, name: card.name,
-      limit_amount: card.limit_amount,
+      card_type: card.card_type || 'credit',
+      limit_amount: limitAmt,
       payment_day: card.payment_day,
       color: card.color,
       used,
-      remaining: Math.max(0, card.limit_amount - used),
+      remaining: limitAmt > 0 ? Math.max(0, limitAmt - used) : 0,
       cycle_start: start,
       cycle_end: end,
     });
@@ -406,14 +417,16 @@ app.get('/api/credit-cards', requireAuth, async (req, res) => {
 });
 
 app.post('/api/credit-cards', requireAuth, async (req, res) => {
-  const { name, limit_amount, payment_day, color } = req.body;
+  const { name, card_type, limit_amount, payment_day, color } = req.body;
   if (!name) return res.status(400).json({ error: '카드명을 입력하세요.' });
+  const type = card_type === 'debit' ? 'debit' : 'credit';
   const { data, error } = await supabase
     .from('credit_cards')
     .insert([{
       user_id: req.user.id, name,
-      limit_amount: parseInt(limit_amount) || 0,
-      payment_day: parseInt(payment_day) || 25,
+      card_type: type,
+      limit_amount: type === 'credit' ? (parseInt(limit_amount) || 0) : 0,
+      payment_day: type === 'credit' ? (parseInt(payment_day) || null) : null,
       color: color || '#b39ddb',
     }])
     .select().single();
@@ -422,10 +435,17 @@ app.post('/api/credit-cards', requireAuth, async (req, res) => {
 });
 
 app.put('/api/credit-cards/:id', requireAuth, async (req, res) => {
-  const { name, limit_amount, payment_day, color } = req.body;
+  const { name, card_type, limit_amount, payment_day, color } = req.body;
+  const type = card_type === 'debit' ? 'debit' : 'credit';
   const { data, error } = await supabase
     .from('credit_cards')
-    .update({ name, limit_amount: parseInt(limit_amount) || 0, payment_day: parseInt(payment_day) || 25, color })
+    .update({
+      name,
+      card_type: type,
+      limit_amount: type === 'credit' ? (parseInt(limit_amount) || 0) : 0,
+      payment_day: type === 'credit' ? (parseInt(payment_day) || null) : null,
+      color,
+    })
     .eq('id', req.params.id).eq('user_id', req.user.id)
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
@@ -641,14 +661,13 @@ app.put('/api/assets/snapshot', requireAuth, async (req, res) => {
 // 지출수단 API
 // =============================================
 const DEFAULT_PAYMENT_METHODS = [
-  { name: '신용카드', order_index: 0, is_default: true },
-  { name: '체크카드', order_index: 1, is_default: true },
-  { name: '현금',     order_index: 2, is_default: true },
-  { name: '카카오페이', order_index: 3, is_default: true },
-  { name: '네이버페이', order_index: 4, is_default: true },
-  { name: '토스',     order_index: 5, is_default: true },
-  { name: '계좌이체', order_index: 6, is_default: true },
-  { name: '기타',     order_index: 7, is_default: true },
+  { name: '카드',     order_index: 0, is_default: true },
+  { name: '현금',     order_index: 1, is_default: true },
+  { name: '카카오페이', order_index: 2, is_default: true },
+  { name: '네이버페이', order_index: 3, is_default: true },
+  { name: '토스',     order_index: 4, is_default: true },
+  { name: '계좌이체', order_index: 5, is_default: true },
+  { name: '기타',     order_index: 6, is_default: true },
 ];
 
 app.post('/api/payment-methods/seed', requireAuth, async (req, res) => {
