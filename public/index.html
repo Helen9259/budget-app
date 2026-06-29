@@ -3067,14 +3067,23 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
 // =============================================
 // 지출수단 관리
 // =============================================
+const FALLBACK_PAYMENT_METHODS = [
+  { id: null, name: '카드' }, { id: null, name: '현금' }, { id: null, name: '카카오페이' },
+  { id: null, name: '네이버페이' }, { id: null, name: '토스' }, { id: null, name: '계좌이체' }, { id: null, name: '기타' }
+];
+
 async function loadPaymentMethods() {
   try {
     await api('POST', '/api/payment-methods/seed', {});
     const data = await api('GET', '/api/payment-methods');
-    _paymentMethods = data;
+    _paymentMethods = data && data.length > 0 ? data : FALLBACK_PAYMENT_METHODS;
     renderPaymentList();
     renderFixedPaymentList();
-  } catch { /* fallback to empty */ }
+  } catch {
+    _paymentMethods = FALLBACK_PAYMENT_METHODS;
+    renderPaymentList();
+    renderFixedPaymentList();
+  }
 }
 
 function openPayMgmt() {
