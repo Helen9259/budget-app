@@ -255,25 +255,25 @@ app.get('/api/transactions/search', requireAuth, async (req, res) => {
 });
 
 app.get('/api/transactions/export', requireAuth, async (req, res) => {
-  const { year, month } = req.query;
-  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-
   const { data, error } = await supabase
     .from('transactions').select('*')
     .eq('user_id', req.user.id)
-    .gte('date', startDate).lte('date', endDate).order('date');
+    .order('date', { ascending: true })
+    .order('created_at', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
+  const today = new Date().toISOString().slice(0, 10);
   const header = '날짜,구분,금액,내용,카테고리,소분류,지출수단,메모';
-  const rows = data.map(t =>
-    [t.date, t.type === 'income' ? '수입' : '지출', t.amount, `"${t.content}"`,
-      t.category, t.subcategory || '', t.payment_method || '', `"${t.memo || ''}"`].join(',')
-  );
+  const rows = (data || []).map(t => {
+    const esc = s => `"${String(s || '').replace(/"/g, '""')}"`;
+    return [t.date, t.type === 'income' ? '수입' : '지출', t.amount,
+      esc(t.content), t.category || '', t.subcategory || '',
+      t.payment_method || '', esc(t.memo || '')].join(',');
+  });
   const csv = '﻿' + [header, ...rows].join('\n');
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="budget_${year}${String(month).padStart(2, '0')}.csv"`);
+  res.setHeader('Content-Disposition', `attachment; filename="budget_all_${today}.csv"`);
   res.send(csv);
 });
 
@@ -635,6 +635,76 @@ app.put('/api/assets/snapshot', requireAuth, async (req, res) => {
   const { error } = await supabase.from('asset_snapshots').insert(rows);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ saved: rows.length });
+});
+
+// =============================================
+// 지출수단 API
+// =============================================
+const DEFAULT_PAYMENT_METHODS = [
+  { name: '신용카드', order_index: 0, is_default: true },
+  { name: '체크카드', order_index: 1, is_default: true },
+  { name: '현금',     order_index: 2, is_default: true },
+  { name: '카카오페이', order_index: 3, is_default: true },
+  { name: '네이버페이', order_index: 4, is_default: true },
+  { name: '토스',     order_index: 5, is_default: true },
+  { name: '계좌이체', order_index: 6, is_default: true },
+  { name: '기타',     order_index: 7, is_default: true },
+];
+
+app.post('/api/payment-methods/seed', requireAuth, async (req, res) => {
+  const { count } = await supabase
+    .from('payment_methods').select('*', { count: 'exact', head: true })
+    .eq('user_id', req.user.id);
+  if (count > 0) return res.json({ seeded: false, count });
+  const rows = DEFAULT_PAYMENT_METHODS.map(m => ({ ...m, user_id: req.user.id }));
+  const { error } = await supabase.from('payment_methods').insert(rows);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ seeded: true });
+});
+
+app.get('/api/payment-methods', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('payment_methods').select('*')
+    .eq('user_id', req.user.id)
+    .order('order_index').order('created_at');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.post('/api/payment-methods', requireAuth, async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: '이름을 입력하세요.' });
+  const { count } = await supabase
+    .from('payment_methods').select('*', { count: 'exact', head: true })
+    .eq('user_id', req.user.id);
+  const { data, error } = await supabase
+    .from('payment_methods')
+    .insert([{ user_id: req.user.id, name, order_index: count || 0, is_default: false }])
+    .select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
+
+app.put('/api/payment-methods/:id', requireAuth, async (req, res) => {
+  const { name, order_index } = req.body;
+  const update = {};
+  if (name !== undefined) update.name = name;
+  if (order_index !== undefined) update.order_index = order_index;
+  const { data, error } = await supabase
+    .from('payment_methods').update(update)
+    .eq('id', req.params.id).eq('user_id', req.user.id)
+    .select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: '찾을 수 없습니다.' });
+  res.json(data);
+});
+
+app.delete('/api/payment-methods/:id', requireAuth, async (req, res) => {
+  const { error } = await supabase
+    .from('payment_methods').delete()
+    .eq('id', req.params.id).eq('user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ message: '삭제됨' });
 });
 
 // =============================================

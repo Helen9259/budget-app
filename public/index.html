@@ -108,6 +108,16 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .s-expense { color: var(--expense-color); }
 .s-balance { color: var(--primary-dark); }
 
+/* 지출수단 관리 */
+.pay-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface); border-radius: 14px; margin: 0 16px 8px; box-shadow: var(--shadow); cursor: grab; touch-action: none; }
+.pay-row.dragging { opacity: 0.4; background: var(--primary-light); }
+.pay-row.drag-over { border: 2px dashed var(--primary); }
+.pay-drag-handle { color: var(--text3); font-size: 18px; flex-shrink: 0; user-select: none; }
+.pay-row-name { flex: 1; font-size: 14px; font-weight: 600; }
+.pay-row-btns { display: flex; gap: 6px; align-items: center; }
+.pay-arrow-btn { width: 30px; height: 30px; border-radius: 8px; background: var(--primary-light); color: var(--primary-dark); font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.pay-del-btn { width: 30px; height: 30px; border-radius: 50%; background: var(--surface2); color: var(--text3); font-size: 13px; display: flex; align-items: center; justify-content: center; }
+
 /* 카드 현황 */
 .card-summary-section { background: var(--surface); padding: 12px 16px 14px; border-bottom: 1px solid var(--border); }
 .card-summary-title { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 10px; display: flex; align-items: center; gap: 4px; }
@@ -605,7 +615,6 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
           <div class="month-summary">
             <div class="summary-card"><div class="s-label">수입</div><div class="s-value s-income" id="sum-income">₩0</div></div>
             <div class="summary-card"><div class="s-label">지출</div><div class="s-value s-expense" id="sum-expense">₩0</div></div>
-            <div class="summary-card"><div class="s-label">잔액</div><div class="s-value s-balance" id="sum-balance">₩0</div></div>
           </div>
         </div>
         <!-- 카드 현황 -->
@@ -730,15 +739,20 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
           </div>
         </div>
 
-        <div class="settings-title">💳 카드 관리</div>
-        <div class="settings-card" id="cards-settings-list"></div>
-        <button class="btn-add-card" onclick="openCardForm()">+ 카드 추가</button>
+        <div class="settings-title">지출수단 관리</div>
+        <div class="settings-card">
+          <div class="settings-item" onclick="openPayMgmt()">
+            <span class="settings-item-icon">💳</span>
+            <span class="settings-item-label">지출수단 관리</span>
+            <span class="settings-item-arrow">›</span>
+          </div>
+        </div>
 
         <div class="settings-title">데이터</div>
         <div class="settings-card">
           <div class="settings-item" onclick="exportCSV()">
             <span class="settings-item-icon">📥</span>
-            <span class="settings-item-label">이번 달 CSV 내보내기</span>
+            <span class="settings-item-label">전체 데이터 CSV 내보내기</span>
             <span class="settings-item-arrow">›</span>
           </div>
         </div>
@@ -1073,6 +1087,44 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 <div class="toast" id="toast"></div>
 
 <!-- =============================================
+     지출수단 관리 패널
+     ============================================= -->
+<div class="cat-mgmt-panel" id="pay-mgmt-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closePayMgmt()">←</button>
+    <div class="panel-title">지출수단 관리</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="panel-body">
+    <div style="padding:12px 16px 4px;font-size:12px;color:var(--text3)">길게 눌러 드래그로 순서를 변경할 수 있어요</div>
+    <div id="pay-mgmt-list" style="padding-top:8px"></div>
+    <button class="btn-add-cat" onclick="openAddPaymentMethod()">+ 지출수단 추가</button>
+  </div>
+</div>
+
+<!-- 카드 관리 패널 -->
+<div class="cat-mgmt-panel" id="card-mgmt-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeCardMgmt()">←</button>
+    <div class="panel-title">카드 관리</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="panel-body">
+    <div id="cards-settings-list"></div>
+    <button class="btn-add-card" onclick="openCardForm()" style="margin:8px 16px 0">+ 카드 추가</button>
+  </div>
+</div>
+
+<!-- 지출수단 추가 모달 -->
+<div class="add-asset-modal" id="pay-add-modal" onclick="closeAddPaymentMethod()">
+  <div class="add-asset-box" onclick="event.stopPropagation()">
+    <div class="add-asset-box-title">지출수단 추가</div>
+    <div class="form-row" style="margin-bottom:16px"><label>이름</label><input type="text" id="pay-add-name" placeholder="예) 삼성페이, 제로페이" onkeydown="if(event.key==='Enter')saveNewPaymentMethod()"></div>
+    <button class="btn-primary" onclick="saveNewPaymentMethod()">추가</button>
+  </div>
+</div>
+
+<!-- =============================================
      카테고리 관리 패널
      ============================================= -->
 <div class="cat-mgmt-panel" id="cat-mgmt-panel">
@@ -1221,7 +1273,8 @@ async function loadCategories() {
   } catch (e) { /* fallback to defaults */ }
 }
 
-const PAYMENT_METHODS = ['신용카드', '체크카드', '현금', '카카오페이', '네이버페이', '토스', '계좌이체', '기타'];
+// DB에서 로드되는 지출수단 (id, name, order_index, is_default)
+let _paymentMethods = [];
 
 const CARD_COLORS = ['#b39ddb', '#90caf9', '#a5d6a7', '#ffcc80', '#f48fb1', '#80cbc4', '#ef9a9a', '#ce93d8'];
 
@@ -1314,6 +1367,7 @@ function enterApp() {
   // 병렬 초기화
   Promise.all([
     loadCategories(),
+    loadPaymentMethods(),
     loadCards(),
     generateFixedExpenses(),
   ]).then(() => {
@@ -1338,7 +1392,6 @@ function showTab(tab) {
   const showIcons = tab === 'ledger';
   document.getElementById('header-left-btn').style.display = showIcons ? '' : 'none';
   document.getElementById('header-right-btn').style.display = showIcons ? '' : 'none';
-  if (tab === 'settings') renderCardListSettings();
   if (tab === 'assets') {
     document.getElementById('asset-month-label').textContent = monthStr(assetState.year, assetState.month);
     loadAssets();
@@ -2040,7 +2093,8 @@ function renderSchCatChips() {
 function renderSchPayChips() {
   const el = document.getElementById('sch-pay-chips');
   el.innerHTML = '';
-  PAYMENT_METHODS.forEach(p => {
+  _paymentMethods.forEach(m => {
+    const p = m.name;
     const btn = document.createElement('button');
     btn.className = 'sch-chip' + (schState.payment === p ? ' on' : '');
     btn.textContent = p;
@@ -2249,7 +2303,6 @@ function renderSummary() {
   });
   document.getElementById('sum-income').textContent = fmt(income);
   document.getElementById('sum-expense').textContent = fmt(expense);
-  document.getElementById('sum-balance').textContent = fmt(income - expense);
 }
 
 function renderCardSummary() {
@@ -2424,7 +2477,8 @@ function selectSubcat(name) { state.formSubcat = name; renderSubcatList(); }
 function renderPaymentList() {
   const el = document.getElementById('payment-list');
   el.innerHTML = '';
-  PAYMENT_METHODS.forEach(p => {
+  _paymentMethods.forEach(m => {
+    const p = m.name;
     const btn = document.createElement('button');
     btn.className = 'payment-chip' + (state.formPayment === p ? ' selected' : '');
     btn.textContent = p;
@@ -2585,7 +2639,8 @@ function selectFixedSubcat(name) { state.fixedSubcat = name; renderFixedSubcatLi
 function renderFixedPaymentList() {
   const el = document.getElementById('fixed-payment-list');
   el.innerHTML = '';
-  PAYMENT_METHODS.forEach(p => {
+  _paymentMethods.forEach(m => {
+    const p = m.name;
     const btn = document.createElement('button');
     btn.className = 'payment-chip' + (state.fixedPayment === p ? ' selected' : '');
     btn.textContent = p;
@@ -2715,7 +2770,8 @@ async function saveCard() {
     else { await api('POST', '/api/credit-cards', body); showToast('카드가 추가되었습니다.'); }
     closeCardSheet();
     await loadCards();
-    renderCardListSettings();
+    if (document.getElementById('card-mgmt-panel').classList.contains('visible'))
+      renderCardListSettings();
     renderCardSummary();
   } catch (e) { showToast(e.message); }
 }
@@ -2959,7 +3015,7 @@ function renderCardListSettings() {
 let _deleteTarget = null;
 function confirmDelete(type, id) {
   _deleteTarget = { type, id };
-  const msgs = { tx: '내역을 삭제할까요?', fixed: '고정지출을 삭제하면\n이번 달부터 자동 생성이 중단됩니다.\n(과거 내역은 유지됩니다)', card: '카드를 삭제하면\n관련 내역의 카드 정보가 해제됩니다.' };
+  const msgs = { tx: '내역을 삭제할까요?', fixed: '고정지출을 삭제하면\n이번 달부터 자동 생성이 중단됩니다.\n(과거 내역은 유지됩니다)', card: '카드를 삭제하면\n관련 내역의 카드 정보가 해제됩니다.', paymentMethod: '지출수단을 삭제할까요?\n기존 내역의 지출수단 기록은 유지됩니다.' };
   document.getElementById('confirm-msg').textContent = msgs[type] || '정말 삭제할까요?';
   document.getElementById('confirm-overlay').classList.add('visible');
 }
@@ -2988,9 +3044,149 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
       renderCardListSettings();
       renderCardSummary();
       showToast('카드가 삭제되었습니다.');
+    } else if (type === 'paymentMethod') {
+      await api('DELETE', `/api/payment-methods/${id}`);
+      closeConfirm();
+      await loadPaymentMethods();
+      renderPayMgmtList();
+      showToast('삭제되었습니다.');
     }
   } catch (e) { showToast(e.message); }
 };
+
+// =============================================
+// 지출수단 관리
+// =============================================
+async function loadPaymentMethods() {
+  try {
+    await api('POST', '/api/payment-methods/seed', {});
+    const data = await api('GET', '/api/payment-methods');
+    _paymentMethods = data;
+    renderPaymentList();
+    renderFixedPaymentList();
+  } catch { /* fallback to empty */ }
+}
+
+function openPayMgmt() {
+  document.getElementById('pay-mgmt-panel').classList.add('visible');
+  renderPayMgmtList();
+}
+function closePayMgmt() {
+  document.getElementById('pay-mgmt-panel').classList.remove('visible');
+}
+
+function openCardMgmt() {
+  document.getElementById('card-mgmt-panel').classList.add('visible');
+  renderCardListSettings();
+}
+function closeCardMgmt() {
+  document.getElementById('card-mgmt-panel').classList.remove('visible');
+}
+
+function renderPayMgmtList() {
+  const el = document.getElementById('pay-mgmt-list');
+  el.innerHTML = '';
+  _paymentMethods.forEach((m, idx) => {
+    const div = document.createElement('div');
+    div.className = 'pay-row';
+    div.setAttribute('draggable', 'true');
+    div.dataset.idx = idx;
+    div.dataset.id = m.id;
+
+    const isCreditCard = m.name === '신용카드';
+    div.innerHTML = `
+      <span class="pay-drag-handle">⠿</span>
+      <span class="pay-row-name">${escHtml(m.name)}</span>
+      <div class="pay-row-btns">
+        ${isCreditCard ? `<button class="pay-arrow-btn" onclick="openCardMgmt()">›</button>` : ''}
+        <button class="pay-del-btn" onclick="confirmDelete('paymentMethod','${m.id}')">✕</button>
+      </div>`;
+
+    // Drag events
+    div.addEventListener('dragstart', e => { _payDragIdx = idx; div.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    div.addEventListener('dragend', () => { div.classList.remove('dragging'); document.querySelectorAll('.pay-row').forEach(r => r.classList.remove('drag-over')); });
+    div.addEventListener('dragover', e => { e.preventDefault(); if (idx !== _payDragIdx) div.classList.add('drag-over'); });
+    div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+    div.addEventListener('drop', e => {
+      e.preventDefault();
+      div.classList.remove('drag-over');
+      if (_payDragIdx === null || _payDragIdx === idx) return;
+      const moved = _paymentMethods.splice(_payDragIdx, 1)[0];
+      _paymentMethods.splice(idx, 0, moved);
+      _payDragIdx = null;
+      savePaymentOrder();
+      renderPayMgmtList();
+    });
+
+    // Touch drag
+    let _touchClone = null, _touchStartY = 0, _touchSrcIdx = null;
+    div.addEventListener('touchstart', e => {
+      _touchSrcIdx = idx;
+      _touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    div.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (_touchSrcIdx === null) return;
+      const touchY = e.touches[0].clientY;
+      const rows = [...document.querySelectorAll('.pay-row[data-idx]')];
+      rows.forEach(r => {
+        const rect = r.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        r.classList.toggle('drag-over', touchY >= rect.top && touchY <= rect.bottom && parseInt(r.dataset.idx) !== _touchSrcIdx);
+      });
+    }, { passive: false });
+    div.addEventListener('touchend', e => {
+      const touchY = e.changedTouches[0].clientY;
+      const rows = [...document.querySelectorAll('.pay-row[data-idx]')];
+      let targetIdx = null;
+      rows.forEach(r => {
+        const rect = r.getBoundingClientRect();
+        if (touchY >= rect.top && touchY <= rect.bottom) targetIdx = parseInt(r.dataset.idx);
+      });
+      rows.forEach(r => r.classList.remove('drag-over'));
+      if (targetIdx !== null && targetIdx !== _touchSrcIdx) {
+        const moved = _paymentMethods.splice(_touchSrcIdx, 1)[0];
+        _paymentMethods.splice(targetIdx, 0, moved);
+        savePaymentOrder();
+        renderPayMgmtList();
+      }
+      _touchSrcIdx = null;
+    });
+
+    el.appendChild(div);
+  });
+}
+
+let _payDragIdx = null;
+
+async function savePaymentOrder() {
+  try {
+    await Promise.all(_paymentMethods.map((m, i) =>
+      api('PUT', `/api/payment-methods/${m.id}`, { order_index: i })
+    ));
+  } catch { showToast('순서 저장 실패'); }
+}
+
+function openAddPaymentMethod() {
+  document.getElementById('pay-add-name').value = '';
+  document.getElementById('pay-add-modal').classList.add('visible');
+  setTimeout(() => document.getElementById('pay-add-name').focus(), 100);
+}
+function closeAddPaymentMethod() {
+  document.getElementById('pay-add-modal').classList.remove('visible');
+}
+async function saveNewPaymentMethod() {
+  const name = document.getElementById('pay-add-name').value.trim();
+  if (!name) return showToast('이름을 입력하세요.');
+  if (_paymentMethods.some(m => m.name === name)) return showToast('이미 있는 지출수단입니다.');
+  try {
+    await api('POST', '/api/payment-methods', { name });
+    await loadPaymentMethods();
+    renderPayMgmtList();
+    closeAddPaymentMethod();
+    showToast('추가되었습니다.');
+  } catch (e) { showToast(e.message); }
+}
 
 // =============================================
 // 주간리포트
@@ -3337,13 +3533,13 @@ function wRoundRect(ctx, x, y, w, h, r) {
 // =============================================
 async function exportCSV() {
   try {
-    const url = `/api/transactions/export?year=${state.year}&month=${state.month}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${state.token}` } });
+    const res = await fetch('/api/transactions/export', { headers: { Authorization: `Bearer ${state.token}` } });
     if (!res.ok) throw new Error('내보내기 실패');
     const blob = await res.blob();
+    const today = new Date().toISOString().slice(0, 10);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `budget_${state.year}${String(state.month).padStart(2, '0')}.csv`;
+    a.download = `budget_all_${today}.csv`;
     a.click();
     showToast('CSV 파일을 저장했습니다.');
   } catch (e) { showToast(e.message); }
