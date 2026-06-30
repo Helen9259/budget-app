@@ -775,12 +775,6 @@ app.get('/api/weekly-report', requireAuth, async (req, res) => {
   if (!week_start || !/^\d{4}-\d{2}-\d{2}$/.test(week_start))
     return res.status(400).json({ error: 'week_start(YYYY-MM-DD) 필요' });
 
-  // 캐시 확인
-  const { data: cached } = await supabase
-    .from('weekly_reports').select('data')
-    .eq('user_id', req.user.id).eq('week_start', week_start).maybeSingle();
-  if (cached?.data) return res.json(cached.data);
-
   // 주간 날짜 범위 (월~일)
   const monDate = new Date(week_start + 'T00:00:00');
   const sunDate = new Date(monDate);
@@ -823,12 +817,6 @@ app.get('/api/weekly-report', requireAuth, async (req, res) => {
   const totalIncome = (txs || []).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
 
   const reportData = { week_start, week_end, days, categories, totalExpense, totalIncome };
-
-  // DB 캐시 저장
-  await supabase.from('weekly_reports').upsert(
-    [{ user_id: req.user.id, week_start, data: reportData }],
-    { onConflict: 'user_id,week_start' }
-  );
 
   res.json(reportData);
 });

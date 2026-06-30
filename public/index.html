@@ -76,14 +76,30 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .app-header { background: var(--surface); padding: 0 16px; height: var(--header-h); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 10; }
 .header-title { font-size: 17px; font-weight: 700; }
 .header-icon-btn { width: 36px; height: 36px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text2); }
-.content-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--tab-h) + 20px); }
+.content-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--tab-h) + 20px); position: relative; }
+
+/* =============================================
+   Pull-to-refresh
+   ============================================= */
+.ptr-indicator { position: absolute; top: 0; left: 50%; transform: translate(-50%, -100%); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; z-index: 50; transition: transform .15s; pointer-events: none; }
+.ptr-indicator.dragging { transition: none; }
+.ptr-spinner { width: 22px; height: 22px; border: 3px solid var(--primary-light); border-top-color: var(--primary); border-radius: 50%; }
+.ptr-spinner.spin { animation: ptr-rotate .7s linear infinite; }
+@keyframes ptr-rotate { to { transform: rotate(360deg); } }
+
+/* 서브탭 스와이프 */
+#subtab-calendar, #subtab-fixed, #subtab-weekly { transition: transform .25s ease, opacity .25s ease; }
+.subtab-slide-from-right { animation: subtab-in-right .25s ease; }
+.subtab-slide-from-left { animation: subtab-in-left .25s ease; }
+@keyframes subtab-in-right { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes subtab-in-left { from { transform: translateX(-24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 /* =============================================
    하단 탭바 — 알약형
    ============================================= */
-.tab-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--surface); border-radius: 40px; padding: 8px 12px; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 24px rgba(100,80,160,0.18); z-index: 100; border: 1px solid var(--border); }
-.tab-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 20px; border-radius: 30px; font-size: 11px; font-weight: 600; color: var(--text3); background: transparent; transition: all .2s; min-width: 72px; }
-.tab-item .tab-icon { font-size: 18px; line-height: 1; }
+.tab-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--surface); border-radius: 40px; padding: 6px 10px; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 24px rgba(100,80,160,0.18); z-index: 100; border: 1px solid var(--border); white-space: nowrap; }
+.tab-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 16px; border-radius: 30px; font-size: 10px; font-weight: 600; color: var(--text3); background: transparent; transition: all .2s; min-width: 64px; white-space: nowrap; }
+.tab-item .tab-icon { font-size: 16px; line-height: 1; }
 .tab-item.active { background: var(--primary-light); color: var(--primary-dark); }
 
 /* =============================================
@@ -473,7 +489,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .panel-header { background: var(--surface); padding: 0 16px; height: var(--header-h); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .panel-back { width: 36px; height: 36px; border-radius: 10px; background: var(--surface2); color: var(--text2); font-size: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .panel-header-title { font-size: 17px; font-weight: 700; flex: 1; }
-.stats-body { flex: 1; overflow-y: auto; padding-bottom: 40px; }
+.stats-body { flex: 1; overflow-y: auto; padding-bottom: 40px; position: relative; }
 .stats-month-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 14px 16px 8px; }
 .stats-type-toggle { display: flex; background: var(--surface2); border-radius: 12px; padding: 4px; margin: 0 16px 4px; }
 .stats-type-btn { flex: 1; padding: 8px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--text3); background: transparent; transition: all .2s; }
@@ -595,6 +611,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
   </div>
 
   <div class="content-area" id="content-area">
+    <div class="ptr-indicator" id="ptr-indicator-main"><div class="ptr-spinner"></div></div>
 
     <!-- 가계부 탭 -->
     <div id="tab-ledger">
@@ -617,16 +634,16 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
             <div class="summary-card"><div class="s-label">지출</div><div class="s-value s-expense" id="sum-expense">₩0</div></div>
           </div>
         </div>
-        <!-- 카드 현황 -->
-        <div class="card-summary-section" id="card-summary-section" style="display:none">
-          <div class="card-summary-title">💳 카드 현황</div>
-          <div id="card-summary-list"></div>
-        </div>
         <div class="cal-weekdays">
           <div class="cal-weekday">일</div><div class="cal-weekday">월</div><div class="cal-weekday">화</div>
           <div class="cal-weekday">수</div><div class="cal-weekday">목</div><div class="cal-weekday">금</div><div class="cal-weekday">토</div>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
+        <!-- 카드 현황 -->
+        <div class="card-summary-section" id="card-summary-section" style="display:none">
+          <div class="card-summary-title">💳 카드 현황</div>
+          <div id="card-summary-list"></div>
+        </div>
       </div>
 
       <!-- 고정지출 서브탭 -->
@@ -1006,7 +1023,8 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
     <button class="panel-back" onclick="closeStats()">←</button>
     <span class="panel-header-title">통계</span>
   </div>
-  <div class="stats-body">
+  <div class="stats-body" id="stats-body">
+    <div class="ptr-indicator" id="ptr-indicator-stats"><div class="ptr-spinner"></div></div>
     <div class="stats-month-nav">
       <button class="month-nav-btn" onclick="statsChangeMonth(-1)">←</button>
       <span class="month-label" id="stats-month-label">2026.06</span>
@@ -1403,7 +1421,12 @@ function enterApp() {
 // =============================================
 // 탭 전환
 // =============================================
+let _currentTab = 'ledger';
+let _currentSubTab = 'calendar';
+const SUBTAB_ORDER = ['calendar', 'fixed', 'weekly'];
+
 function showTab(tab) {
+  _currentTab = tab;
   ['ledger', 'assets', 'settings'].forEach(t =>
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none'
   );
@@ -2217,11 +2240,12 @@ async function openEditFromSearch(id) {
 }
 
 function showSubTab(tab) {
-  ['calendar', 'fixed', 'weekly'].forEach(t =>
+  _currentSubTab = tab;
+  SUBTAB_ORDER.forEach(t =>
     document.getElementById(`subtab-${t}`).style.display = t === tab ? '' : 'none'
   );
   document.querySelectorAll('.sub-tab').forEach((b, i) =>
-    b.classList.toggle('active', ['calendar', 'fixed', 'weekly'][i] === tab)
+    b.classList.toggle('active', SUBTAB_ORDER[i] === tab)
   );
   if (tab === 'fixed') renderFixedList();
   if (tab === 'weekly') initWeeklyReport();
@@ -3299,11 +3323,7 @@ async function loadWeeklyReport() {
   document.getElementById('weekly-download-btn').style.display = 'none';
   try {
     const ws = dateToStr(weeklyState.weekStart);
-    const res = await fetch(`/api/weekly-report?week_start=${ws}`, {
-      headers: { Authorization: `Bearer ${state.token}` }
-    });
-    if (!res.ok) throw new Error('로드 실패');
-    weeklyState.data = await res.json();
+    weeklyState.data = await api('GET', `/api/weekly-report?week_start=${ws}`);
     renderWeeklyReport();
   } catch (e) {
     document.getElementById('weekly-content').innerHTML =
@@ -3588,6 +3608,95 @@ async function exportCSV() {
 }
 
 // =============================================
+// Pull-to-refresh
+// =============================================
+function setupPullToRefresh(containerEl, indicatorEl, onRefresh) {
+  const THRESHOLD = 80;
+  let startY = 0, pulling = false, dragging = false, refreshing = false;
+
+  containerEl.addEventListener('touchstart', e => {
+    if (refreshing || containerEl.scrollTop > 0) { pulling = false; return; }
+    startY = e.touches[0].clientY;
+    pulling = true;
+    dragging = false;
+  }, { passive: true });
+
+  containerEl.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) return;
+    if (containerEl.scrollTop > 0) { pulling = false; return; }
+    dragging = true;
+    const dist = Math.min(dy * 0.5, THRESHOLD * 1.4);
+    indicatorEl.classList.add('dragging');
+    indicatorEl.style.transform = `translate(-50%, ${dist - 100}%)`;
+    indicatorEl.querySelector('.ptr-spinner').classList.toggle('spin', dist >= THRESHOLD);
+  }, { passive: true });
+
+  containerEl.addEventListener('touchend', async () => {
+    if (!pulling || !dragging) { pulling = false; return; }
+    pulling = false;
+    const dist = parseFloat((indicatorEl.style.transform.match(/-?\d+\.?\d*(?=%\))/) || [0])[0]) + 100;
+    indicatorEl.classList.remove('dragging');
+    if (dist >= THRESHOLD) {
+      refreshing = true;
+      indicatorEl.style.transform = 'translate(-50%, 0%)';
+      indicatorEl.querySelector('.ptr-spinner').classList.add('spin');
+      try { await onRefresh(); } catch {}
+      indicatorEl.style.transform = 'translate(-50%, -100%)';
+      indicatorEl.querySelector('.ptr-spinner').classList.remove('spin');
+      refreshing = false;
+    } else {
+      indicatorEl.style.transform = 'translate(-50%, -100%)';
+      indicatorEl.querySelector('.ptr-spinner').classList.remove('spin');
+    }
+  });
+}
+
+async function refreshCurrentMainTab() {
+  if (_currentTab === 'ledger') {
+    await Promise.all([loadMonth(), loadCards()]);
+    if (_currentSubTab === 'fixed') { await loadFixedExpenses(); renderFixedList(); }
+    if (_currentSubTab === 'weekly') await loadWeeklyReport();
+  } else if (_currentTab === 'assets') {
+    await loadAssets();
+  } else if (_currentTab === 'settings') {
+    await Promise.all([loadCategories(), loadPaymentMethods()]);
+  }
+}
+
+// =============================================
+// 서브탭 좌우 스와이프 (캘린더 ↔ 고정지출 ↔ 주간리포트)
+// =============================================
+function setupSubTabSwipe(containerEl) {
+  let startX = 0, startY = 0, active = false;
+  containerEl.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    active = true;
+  }, { passive: true });
+  containerEl.addEventListener('touchend', e => {
+    if (!active) return;
+    active = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) < 50 || Math.abs(dy) >= 30) return;
+    const idx = SUBTAB_ORDER.indexOf(_currentSubTab);
+    let nextTab = null, slideClass = null;
+    if (dx < 0 && idx < SUBTAB_ORDER.length - 1) { nextTab = SUBTAB_ORDER[idx + 1]; slideClass = 'subtab-slide-from-right'; }
+    else if (dx > 0 && idx > 0) { nextTab = SUBTAB_ORDER[idx - 1]; slideClass = 'subtab-slide-from-left'; }
+    if (!nextTab) return;
+    showSubTab(nextTab);
+    const el = document.getElementById(`subtab-${nextTab}`);
+    el.classList.remove('subtab-slide-from-right', 'subtab-slide-from-left');
+    void el.offsetWidth;
+    el.classList.add(slideClass);
+    el.addEventListener('animationend', () => el.classList.remove(slideClass), { once: true });
+  }, { passive: true });
+}
+
+// =============================================
 // PWA
 // =============================================
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -3601,6 +3710,9 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
   renderColorPicker();
   document.getElementById('header-left-btn').onclick = openStats;
   document.getElementById('header-right-btn').onclick = openSearch;
+  setupPullToRefresh(document.getElementById('content-area'), document.getElementById('ptr-indicator-main'), refreshCurrentMainTab);
+  setupPullToRefresh(document.getElementById('stats-body'), document.getElementById('ptr-indicator-stats'), loadStats);
+  setupSubTabSwipe(document.getElementById('tab-ledger'));
   if (state.token && state.user) enterApp();
   ['login-email', 'login-pw'].forEach(id =>
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
