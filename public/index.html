@@ -401,9 +401,13 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .asset-sum-value.net { color: #43a047; }
 .asset-section { background: var(--surface); margin: 12px 16px 0; border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
 .asset-section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 12px; }
-.asset-comp-wrap { display: flex; align-items: center; gap: 14px; }
-.asset-comp-svg { width: 120px; height: 120px; flex-shrink: 0; overflow: visible; }
-.asset-comp-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.asset-comp-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.asset-comp-canvas-wrap { position: relative; width: 100%; max-width: 200px; aspect-ratio: 1 / 1; margin: 0 auto; }
+.asset-comp-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+.asset-comp-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.asset-comp-center-label { font-size: 11px; color: var(--text2); }
+.asset-comp-center-val { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.asset-comp-legend { width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .asset-leg-item { display: flex; align-items: center; gap: 7px; }
 .asset-leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .asset-leg-label { font-size: 12px; color: var(--text2); flex: 1; }
@@ -703,7 +707,10 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
           <div class="asset-dash-empty-txt">자산을 입력하면 구성 비율이 표시됩니다</div>
         </div>
         <div class="asset-comp-wrap" id="asset-comp-chart">
-          <svg class="asset-comp-svg" id="asset-comp-svg" viewBox="0 0 120 120"></svg>
+          <div class="asset-comp-canvas-wrap">
+            <canvas id="asset-comp-canvas"></canvas>
+            <div class="asset-comp-center" id="asset-comp-center"></div>
+          </div>
           <div class="asset-comp-legend" id="asset-comp-legend"></div>
         </div>
       </div>
@@ -713,9 +720,9 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
         <div class="asset-section-title">순자산 추이 (최근 12개월)</div>
         <canvas class="asset-chart-canvas" id="asset-history-canvas" height="180"></canvas>
         <div class="asset-chart-legend">
-          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#b39ddb"></div>예금·적금</div>
-          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#90caf9"></div>투자</div>
-          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#a5d6a7"></div>현금·예수금</div>
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#A8D8EA"></div>예금·적금</div>
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#B5EAD7"></div>투자</div>
+          <div class="asset-chart-leg-item"><div class="asset-chart-leg-dot" style="background:#FFDAC1"></div>현금·예수금</div>
           <div class="asset-chart-leg-item"><div class="asset-chart-leg-line"></div>순자산</div>
         </div>
       </div>
@@ -1205,6 +1212,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 <!-- =============================================
      JavaScript
      ============================================= -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 // =============================================
 // 상태
@@ -1449,9 +1457,9 @@ function showTab(tab) {
 // 자산관리 상태 & 상수
 // =============================================
 const ASSET_TYPES = [
-  { key: 'savings',    label: '예금·적금',       color: '#b39ddb' },
-  { key: 'investment', label: '주식·ETF·코인',   color: '#90caf9' },
-  { key: 'cash',       label: '현금·예수금',      color: '#a5d6a7' },
+  { key: 'savings',    label: '예금·적금',       color: '#A8D8EA' },
+  { key: 'investment', label: '주식·ETF·코인',   color: '#B5EAD7' },
+  { key: 'cash',       label: '현금·예수금',      color: '#FFDAC1' },
 ];
 
 const assetState = {
@@ -1510,50 +1518,55 @@ function renderAssetDashboard() {
   document.getElementById('asset-comp-empty').style.display = hasData ? 'none' : '';
   document.getElementById('asset-comp-chart').style.display = hasData ? '' : 'none';
 
-  if (hasData) renderAssetDonut(assetState.snapshot, total);
+  if (hasData) {
+    renderAssetDonut(assetState.snapshot, total);
+  } else if (_assetDonutChart) {
+    _assetDonutChart.destroy();
+    _assetDonutChart = null;
+  }
   renderAssetHistoryChart();
   renderLoansList();
 }
 
-function renderAssetDonut(items, total) {
-  const svg = document.getElementById('asset-comp-svg');
-  const legend = document.getElementById('asset-comp-legend');
-  if (!svg || !legend) return;
-  svg.innerHTML = '';
-  legend.innerHTML = '';
+let _assetDonutChart = null;
 
-  const cx = 60, cy = 60, outerR = 52, innerR = 34;
+function renderAssetDonut(items, total) {
+  const canvas = document.getElementById('asset-comp-canvas');
+  const center = document.getElementById('asset-comp-center');
+  const legend = document.getElementById('asset-comp-legend');
+  if (!canvas || !legend) return;
+
   const byType = { savings: 0, investment: 0, cash: 0 };
   items.forEach(it => { byType[it.type] = (byType[it.type] || 0) + it.amount; });
+  const hasAny = total > 0;
 
-  const active = ASSET_TYPES.filter(t => byType[t.key] > 0);
-  const GAP = active.length > 1 ? 3 : 0;
-  let startDeg = 0;
+  if (_assetDonutChart) { _assetDonutChart.destroy(); _assetDonutChart = null; }
 
-  if (active.length === 0) {
-    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy);
-    c.setAttribute('r', (outerR + innerR) / 2);
-    c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'var(--border)');
-    c.setAttribute('stroke-width', outerR - innerR);
-    svg.appendChild(c);
-  } else {
-    active.forEach(t => {
-      const sweep = (byType[t.key] / total) * (360 - GAP * active.length);
-      const endDeg = startDeg + sweep;
-      const o1 = polarToXY(cx, cy, outerR, startDeg + GAP / 2);
-      const o2 = polarToXY(cx, cy, outerR, endDeg - GAP / 2);
-      const i1 = polarToXY(cx, cy, innerR, endDeg - GAP / 2);
-      const i2 = polarToXY(cx, cy, innerR, startDeg + GAP / 2);
-      const large = sweep > 180 ? 1 : 0;
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', `M ${o1.x.toFixed(1)} ${o1.y.toFixed(1)} A ${outerR} ${outerR} 0 ${large} 1 ${o2.x.toFixed(1)} ${o2.y.toFixed(1)} L ${i1.x.toFixed(1)} ${i1.y.toFixed(1)} A ${innerR} ${innerR} 0 ${large} 0 ${i2.x.toFixed(1)} ${i2.y.toFixed(1)} Z`);
-      path.setAttribute('fill', t.color);
-      svg.appendChild(path);
-      startDeg = endDeg + GAP;
-    });
-  }
+  _assetDonutChart = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ASSET_TYPES.map(t => t.label),
+      datasets: [{
+        data: hasAny ? ASSET_TYPES.map(t => byType[t.key] || 0) : [1],
+        backgroundColor: hasAny ? ASSET_TYPES.map(t => t.color) : ['#e8e4f0'],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      animation: { duration: 300 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: hasAny },
+      },
+    },
+  });
 
+  center.innerHTML = `<div class="asset-comp-center-label">총 자산</div><div class="asset-comp-center-val">${fmt(total)}</div>`;
+
+  legend.innerHTML = '';
   ASSET_TYPES.forEach(t => {
     const amt = byType[t.key] || 0;
     const pct = total > 0 ? Math.round(amt / total * 100) : 0;
