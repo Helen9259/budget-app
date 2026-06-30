@@ -492,18 +492,34 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
       m = addMonths(m, 1);
     }
 
+    let lastConfirmedMonth = fe.last_generated_month || null;
+
     for (const month of monthsToGen) {
       const [y, mo] = month.split('-').map(Number);
       const lastDay = new Date(y, mo, 0).getDate();
       const day = Math.min(fe.day_of_month, lastDay);
       const date = `${month}-${String(day).padStart(2, '0')}`;
 
-      const { data: existing } = await supabase
+      // Check by fixed_expense_id first; fall back to content+date to catch legacy rows
+      let existing = null;
+      const { data: byId } = await supabase
         .from('transactions').select('id')
         .eq('user_id', userId)
         .eq('fixed_expense_id', fe.id)
         .eq('date', date)
         .maybeSingle();
+      if (byId) {
+        existing = byId;
+      } else {
+        const { data: byContent } = await supabase
+          .from('transactions').select('id')
+          .eq('user_id', userId)
+          .eq('content', fe.name)
+          .eq('date', date)
+          .eq('is_fixed', true)
+          .maybeSingle();
+        existing = byContent;
+      }
 
       if (!existing) {
         const { error: insErr } = await supabase.from('transactions').insert([{
@@ -518,13 +534,19 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
           is_fixed: true,
           fixed_expense_id: fe.id,
         }]);
-        if (!insErr) generated++;
+        if (!insErr) { generated++; lastConfirmedMonth = month; }
+        // If insert failed, stop advancing — retry next time
+        else break;
+      } else {
+        lastConfirmedMonth = month;
       }
     }
 
-    await supabase.from('fixed_expenses')
-      .update({ last_generated_month: currentMonth })
-      .eq('id', fe.id);
+    if (lastConfirmedMonth && lastConfirmedMonth !== fe.last_generated_month) {
+      await supabase.from('fixed_expenses')
+        .update({ last_generated_month: lastConfirmedMonth })
+        .eq('id', fe.id);
+    }
   }
 
   res.json({ generated, currentMonth });
