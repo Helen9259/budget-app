@@ -123,6 +123,15 @@ app.post('/api/auth/refresh', async (req, res) => {
   res.json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
 });
 
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: '이메일을 입력하세요.' });
+  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, supabaseOpts);
+  const { error } = await anonClient.auth.resetPasswordForEmail(email);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: '비밀번호 재설정 이메일을 발송했습니다.' });
+});
+
 // =============================================
 // 거래 내역 API
 // =============================================
@@ -376,14 +385,9 @@ app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
   const results = [];
 
   for (const card of cards) {
-    // 체크카드는 당월 기준, 신용카드는 결제일 기준
-    let start, end;
-    if (card.card_type === 'debit' || !card.payment_day) {
-      start = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-    } else {
-      ({ start, end } = getBillingCycle(card.payment_day, now));
-    }
+    // 모든 카드 당월 1일~말일 기준
+    const start = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const { data: txs } = await supabase
       .from('transactions').select('amount')
@@ -393,12 +397,11 @@ app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
       .gte('date', start).lte('date', end);
 
     const used = (txs || []).reduce((s, t) => s + t.amount, 0);
-    const limitAmt = card.card_type === 'debit' ? 0 : (card.limit_amount || 0);
+    const limitAmt = card.limit_amount || 0;
     results.push({
       id: card.id, name: card.name,
       card_type: card.card_type || 'credit',
       limit_amount: limitAmt,
-      payment_day: card.payment_day,
       color: card.color,
       used,
       remaining: limitAmt > 0 ? Math.max(0, limitAmt - used) : 0,
@@ -425,8 +428,7 @@ app.post('/api/credit-cards', requireAuth, async (req, res) => {
     .insert([{
       user_id: req.user.id, name,
       card_type: type,
-      limit_amount: type === 'credit' ? (parseInt(limit_amount) || 0) : 0,
-      payment_day: type === 'credit' ? (parseInt(payment_day) || null) : null,
+      limit_amount: parseInt(limit_amount) || 0,
       color: color || '#b39ddb',
     }])
     .select().single();
@@ -442,8 +444,7 @@ app.put('/api/credit-cards/:id', requireAuth, async (req, res) => {
     .update({
       name,
       card_type: type,
-      limit_amount: type === 'credit' ? (parseInt(limit_amount) || 0) : 0,
-      payment_day: type === 'credit' ? (parseInt(payment_day) || null) : null,
+      limit_amount: parseInt(limit_amount) || 0,
       color,
     })
     .eq('id', req.params.id).eq('user_id', req.user.id)

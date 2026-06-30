@@ -49,6 +49,7 @@ input, select, textarea { font-family: inherit; outline: none; border: 1.5px sol
 input:focus, select:focus, textarea:focus { border-color: var(--primary); }
 label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4px; display: block; }
 .btn-primary { background: var(--primary); color: #fff; border-radius: 14px; padding: 14px; font-size: 15px; font-weight: 700; width: 100%; box-shadow: 0 4px 16px rgba(179,157,219,0.35); transition: background .2s, transform .1s; }
+.btn-forgot-pw { width: 100%; margin-top: 10px; background: transparent; color: var(--text3); font-size: 13px; font-weight: 500; }
 .btn-primary:active { transform: scale(0.98); background: var(--primary-dark); }
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
@@ -336,7 +337,17 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .sub-chip { font-size: 11px; color: var(--text2); background: var(--surface2); border-radius: 12px; padding: 3px 10px; }
 .sub-chip.del-sub { cursor: pointer; }
 .sub-chip.del-sub::after { content: ' ✕'; }
-.btn-add-cat { width: calc(100% - 32px); margin: 0 16px 16px; background: transparent; border: 1.5px dashed var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; }
+.btn-add-cat { width: calc(100% - 32px); margin: 0 16px 8px; background: transparent; border: 1.5px dashed var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600; }
+.btn-show-inactive { width: calc(100% - 32px); margin: 0 16px 8px; background: transparent; border: none; color: var(--text3); font-size: 12px; font-weight: 500; text-align: left; padding: 4px 0; }
+.inactive-cat-title { font-size: 12px; font-weight: 600; color: var(--text3); padding: 4px 16px 8px; }
+.btn-reactivate { font-size: 11px; color: var(--primary-dark); background: var(--primary-light); border-radius: 10px; padding: 4px 8px; font-weight: 600; }
+.dup-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; display: flex; align-items: center; justify-content: center; }
+.dup-popup { background: var(--surface); border-radius: 18px; padding: 24px 20px 18px; width: min(320px,90vw); box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+.dup-popup-msg { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 16px; text-align: center; }
+.dup-popup-btns { display: flex; gap: 10px; }
+.dup-popup-btns button { flex: 1; padding: 11px 0; border-radius: 12px; font-size: 14px; font-weight: 700; }
+.dup-popup-btns button:first-child { background: var(--primary); color: #fff; }
+.dup-popup-btns button:last-child { background: var(--surface2); color: var(--text2); }
 
 /* 카테고리 편집 시트 */
 .cat-edit-sheet-body { display: flex; flex-direction: column; gap: 14px; }
@@ -598,6 +609,12 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
       <div class="form-group"><label>이메일</label><input type="email" id="login-email" placeholder="이메일" autocomplete="email"></div>
       <div class="form-group"><label>비밀번호</label><input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password"></div>
       <button class="btn-primary" onclick="doLogin()">로그인</button>
+      <button class="btn-forgot-pw" onclick="showForgotPw()">비밀번호 찾기</button>
+    </div>
+    <div id="forgot-pw-form" style="display:none">
+      <div class="form-group"><label>가입한 이메일</label><input type="email" id="forgot-email" placeholder="이메일" autocomplete="email"></div>
+      <button class="btn-primary" onclick="doForgotPw()">재설정 이메일 보내기</button>
+      <button class="btn-forgot-pw" onclick="showAuthTab('login')">← 로그인으로 돌아가기</button>
     </div>
     <div id="signup-form" style="display:none">
       <div class="form-group"><label>이메일</label><input type="email" id="signup-email" placeholder="이메일" autocomplete="email"></div>
@@ -1174,6 +1191,11 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
   <div class="panel-body">
     <div class="cat-list-section" id="cat-list-section"></div>
     <button class="btn-add-cat" onclick="openCatEdit(null)">+ 카테고리 추가</button>
+    <button class="btn-show-inactive" id="btn-show-inactive" onclick="toggleShowInactive()" style="margin:4px 0 8px">비활성화된 카테고리 보기</button>
+    <div id="inactive-cat-section" style="display:none">
+      <div class="inactive-cat-title">비활성화된 카테고리</div>
+      <div id="inactive-cat-list"></div>
+    </div>
   </div>
 </div>
 
@@ -1374,7 +1396,24 @@ function showAuthTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((b, i) => b.classList.toggle('active', (i === 0) === (tab === 'login')));
   document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
   document.getElementById('signup-form').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('forgot-pw-form').style.display = 'none';
   document.getElementById('auth-error').style.display = 'none';
+}
+function showForgotPw() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('forgot-pw-form').style.display = '';
+  document.getElementById('auth-error').style.display = 'none';
+  document.getElementById('forgot-email').value = document.getElementById('login-email').value;
+}
+async function doForgotPw() {
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!email) return showAuthError('이메일을 입력하세요.');
+  try {
+    await api('POST', '/api/auth/reset-password', { email });
+    document.getElementById('auth-error').style.display = 'none';
+    showToast('비밀번호 재설정 이메일을 발송했습니다. 이메일을 확인해주세요.');
+    showAuthTab('login');
+  } catch (e) { showAuthError(e.message); }
 }
 function showAuthError(msg) { const el = document.getElementById('auth-error'); el.textContent = msg; el.style.display = 'block'; }
 
@@ -1411,9 +1450,19 @@ async function doSignup() {
 
 function doLogout() {
   state.token = null; state.user = null;
+  if (_tokenRefreshTimer) { clearInterval(_tokenRefreshTimer); _tokenRefreshTimer = null; }
   localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('user');
   document.getElementById('main-screen').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
+}
+
+let _tokenRefreshTimer = null;
+
+function startTokenRefreshTimer() {
+  if (_tokenRefreshTimer) clearInterval(_tokenRefreshTimer);
+  if (!localStorage.getItem('refresh_token')) return;
+  // 55분마다 토큰 자동 갱신 (Supabase 기본 만료 1시간)
+  _tokenRefreshTimer = setInterval(tryRefreshToken, 55 * 60 * 1000);
 }
 
 function enterApp() {
@@ -1423,6 +1472,8 @@ function enterApp() {
     document.getElementById('user-email-display').textContent = state.user.email;
     document.getElementById('user-avatar').textContent = state.user.email[0].toUpperCase();
   }
+  // 세션 토큰 자동 갱신 시작
+  startTokenRefreshTimer();
   // 병렬 초기화
   Promise.all([
     loadCategories(),
@@ -1836,8 +1887,41 @@ function confirmAddAssetItem() {
   const name = document.getElementById('new-asset-name').value.trim();
   const amount = parseAmt(document.getElementById('new-asset-amount').value);
   if (!name) return showToast('항목명을 입력하세요.');
-  if (assetInputState.items.some(it => it.name === name)) return showToast('같은 이름의 항목이 이미 있어요.');
+  const existing = assetInputState.items.find(it => it.name === name);
+  if (existing) {
+    // 중복 팝업
+    const popup = document.createElement('div');
+    popup.className = 'dup-popup-overlay';
+    popup.innerHTML = `
+      <div class="dup-popup">
+        <div class="dup-popup-msg">'${escHtml(name)}' 항목이 이미 있어요.</div>
+        <div class="dup-popup-btns">
+          <button onclick="assetDupMerge(this,'${escHtml(name)}',${amount})">합치기</button>
+          <button onclick="assetDupKeepBoth(this,'${escHtml(name)}',${amount})">둘 다 유지</button>
+        </div>
+      </div>`;
+    document.body.appendChild(popup);
+    return;
+  }
   assetInputState.items.push({ type: _addAssetType, name, amount, isNew: true });
+  closeAddAssetItem();
+  renderAssetInputForm();
+}
+
+function assetDupMerge(btn, name, amount) {
+  btn.closest('.dup-popup-overlay').remove();
+  const existing = assetInputState.items.find(it => it.name === name);
+  if (existing) existing.amount += amount;
+  closeAddAssetItem();
+  renderAssetInputForm();
+}
+
+function assetDupKeepBoth(btn, name, amount) {
+  btn.closest('.dup-popup-overlay').remove();
+  // 이름 뒤 숫자 부여
+  let n = 2;
+  while (assetInputState.items.some(it => it.name === `${name} ${n}`)) n++;
+  assetInputState.items.push({ type: _addAssetType, name: `${name} ${n}`, amount, isNew: true });
   closeAddAssetItem();
   renderAssetInputForm();
 }
@@ -2799,7 +2883,8 @@ function setCardType(type) {
   state.cardType = type;
   document.getElementById('btn-card-credit').style.cssText = type === 'credit' ? 'background:var(--primary);color:#fff' : '';
   document.getElementById('btn-card-debit').style.cssText = type === 'debit' ? 'background:var(--primary);color:#fff' : '';
-  document.getElementById('card-limit-row').style.display = type === 'credit' ? '' : 'none';
+  // 신용/체크 모두 한도 입력 가능
+  document.getElementById('card-limit-row').style.display = '';
 }
 
 function openCardForm(id) {
@@ -2841,7 +2926,7 @@ function renderColorPicker() {
 
 async function saveCard() {
   const name = document.getElementById('card-name').value.trim();
-  const limit_amount = state.cardType === 'credit' ? parseAmt(document.getElementById('card-limit').value) : 0;
+  const limit_amount = parseAmt(document.getElementById('card-limit').value);
   if (!name) return showToast('카드명을 입력하세요.');
   const body = { name, limit_amount, card_type: state.cardType, color: state.cardColor };
   try {
@@ -2893,40 +2978,77 @@ function closeCatMgmt() {
 
 function switchCatTab(type) {
   catMgmtTab = type;
+  _showInactiveCats = false;
+  document.getElementById('btn-show-inactive').textContent = '비활성화된 카테고리 보기';
+  document.getElementById('inactive-cat-section').style.display = 'none';
   document.getElementById('cat-tab-expense').classList.toggle('active', type === 'expense');
   document.getElementById('cat-tab-income').classList.toggle('active', type === 'income');
   document.getElementById('cat-mgmt-title').textContent = type === 'expense' ? '지출 카테고리' : '수입 카테고리';
   renderCatMgmtList();
 }
 
-function renderCatMgmtList() {
-  const el = document.getElementById('cat-list-section');
+let _showInactiveCats = false;
+
+function toggleShowInactive() {
+  _showInactiveCats = !_showInactiveCats;
+  const btn = document.getElementById('btn-show-inactive');
+  const section = document.getElementById('inactive-cat-section');
+  btn.textContent = _showInactiveCats ? '비활성화된 카테고리 숨기기' : '비활성화된 카테고리 보기';
+  section.style.display = _showInactiveCats ? '' : 'none';
+  if (_showInactiveCats) renderInactiveCatList();
+}
+
+function renderInactiveCatList() {
+  const el = document.getElementById('inactive-cat-list');
   el.innerHTML = '';
-  const parents = _dbCategories.filter(r => !r.parent && (r.type === catMgmtTab || (catMgmtTab === 'expense' && r.type === 'excluded')));
-  parents.sort((a, b) => a.sort_order - b.sort_order);
-  if (parents.length === 0) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px">카테고리가 없습니다</div>';
+  const inactiveParents = _dbCategories.filter(r => !r.parent && !r.is_active && (r.type === catMgmtTab || (catMgmtTab === 'expense' && r.type === 'excluded')));
+  if (inactiveParents.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:16px 16px 0;font-size:13px">비활성화된 카테고리가 없습니다</div>';
     return;
   }
-  parents.forEach(p => {
-    const subs = _dbCategories.filter(r => r.parent === p.name);
-    const isOn = p.is_active;
+  inactiveParents.forEach(p => {
     const div = document.createElement('div');
     div.className = 'cat-row';
     div.innerHTML = `
       <div class="cat-row-main">
         <div class="cat-row-icon" style="background:${p.color || '#eee'}22">${p.icon || '📦'}</div>
-        <div class="cat-row-name${isOn ? '' : ' inactive'}">${escHtml(p.name)}${p.type === 'excluded' ? ' <span style="font-size:10px;color:var(--text3)">(통계 제외)</span>' : ''}</div>
+        <div class="cat-row-name inactive">${escHtml(p.name)}${p.type === 'excluded' ? ' <span style="font-size:10px;color:var(--text3)">(통계 제외)</span>' : ''}</div>
         <div class="cat-row-btns">
-          <button class="cat-act-btn" onclick="openCatEdit('${p.id}')">✏️</button>
-          <div class="toggle-switch${isOn ? ' on' : ''}" onclick="toggleCatRow('${p.id}',${isOn})">
-            <div class="toggle-knob"></div>
-          </div>
+          <button class="btn-reactivate" onclick="toggleCatRow('${p.id}',false)">재활성화</button>
         </div>
-      </div>
-      ${subs.length ? `<div class="cat-subs-row">${subs.map(s => `<span class="sub-chip">${escHtml(s.name)}</span>`).join('')}</div>` : ''}`;
+      </div>`;
     el.appendChild(div);
   });
+}
+
+function renderCatMgmtList() {
+  const el = document.getElementById('cat-list-section');
+  el.innerHTML = '';
+  const parents = _dbCategories.filter(r => !r.parent && r.is_active !== false && (r.type === catMgmtTab || (catMgmtTab === 'expense' && r.type === 'excluded')));
+  parents.sort((a, b) => a.sort_order - b.sort_order);
+  if (parents.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:30px;font-size:13px">카테고리가 없습니다</div>';
+  } else {
+    parents.forEach(p => {
+      const subs = _dbCategories.filter(r => r.parent === p.name);
+      const div = document.createElement('div');
+      div.className = 'cat-row';
+      div.innerHTML = `
+        <div class="cat-row-main">
+          <div class="cat-row-icon" style="background:${p.color || '#eee'}22">${p.icon || '📦'}</div>
+          <div class="cat-row-name">${escHtml(p.name)}${p.type === 'excluded' ? ' <span style="font-size:10px;color:var(--text3)">(통계 제외)</span>' : ''}</div>
+          <div class="cat-row-btns">
+            <button class="cat-act-btn" onclick="openCatEdit('${p.id}')">✏️</button>
+            <div class="toggle-switch on" onclick="toggleCatRow('${p.id}',true)">
+              <div class="toggle-knob"></div>
+            </div>
+          </div>
+        </div>
+        ${subs.length ? `<div class="cat-subs-row">${subs.map(s => `<span class="sub-chip">${escHtml(s.name)}</span>`).join('')}</div>` : ''}`;
+      el.appendChild(div);
+    });
+  }
+  if (_showInactiveCats) renderInactiveCatList();
 }
 
 async function toggleCatRow(id, currentOn) {
