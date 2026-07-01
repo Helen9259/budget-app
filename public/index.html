@@ -375,27 +375,28 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
    주간리포트
    ============================================= */
 .weekly-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 16px 16px 8px; }
-.weekly-day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 0 10px 16px; }
-.weekly-day-col { background: var(--surface); border-radius: 12px; padding: 8px 6px; border: 1px solid var(--border); min-height: 80px; }
+.weekly-day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 0 10px 16px; align-items: stretch; }
+.weekly-day-col { background: var(--surface); border-radius: 12px; padding: 8px 6px; border: 1px solid var(--border); display: flex; flex-direction: column; }
 .weekly-day-col.weekend { background: #fef6ff; }
-.weekly-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text2); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.weekly-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text2); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; flex-shrink: 0; }
 .weekly-day-col.weekend .weekly-day-header { color: var(--primary-dark); }
+.weekly-tx-list { flex: 1; }
 .weekly-tx-item { font-size: 10px; line-height: 1.3; margin-bottom: 4px; }
 .weekly-tx-content { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .weekly-tx-amount { font-weight: 600; }
 .weekly-tx-amount.income { color: var(--income-color); }
 .weekly-tx-amount.expense { color: var(--expense-color); }
-.weekly-day-total { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); text-align: center; }
+.weekly-day-total { margin-top: auto; padding-top: 6px; border-top: 1px solid var(--border); text-align: center; flex-shrink: 0; }
 .weekly-day-total .inc { font-size: 10px; color: var(--income-color); font-weight: 600; }
 .weekly-day-total .exp { font-size: 10px; color: var(--expense-color); font-weight: 600; }
 .weekly-summary { background: var(--surface); margin: 0 10px 12px; border-radius: 14px; padding: 14px; border: 1px solid var(--border); }
 .weekly-summary-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-.weekly-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.weekly-cat-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.weekly-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.weekly-cat-chip { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; font-size: 12px; }
 .weekly-cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.weekly-cat-name { color: var(--text2); flex: 1; }
+.weekly-cat-name { color: var(--text2); }
 .weekly-cat-amt { font-weight: 600; color: var(--text); }
-.weekly-total-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.weekly-total-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
 .weekly-total-label { font-size: 13px; font-weight: 700; color: var(--text2); }
 .weekly-total-amt { font-size: 15px; font-weight: 700; color: var(--expense-color); }
 
@@ -3508,17 +3509,17 @@ function renderWeeklyReport() {
       </div>` : '';
     cols += `<div class="weekly-day-col${isWeekend ? ' weekend' : ''}">
       <div class="weekly-day-header">${DAYS_KO[i]}<br>${dayNum}</div>
-      ${txsHtml}${totalHtml}
+      <div class="weekly-tx-list">${txsHtml}</div>${totalHtml}
     </div>`;
   });
 
   let catsHtml = '';
   data.categories.forEach(c => {
     const color = CAT_COLORS_WEEKLY[c.name] || '#D9D9D9';
-    catsHtml += `<div class="weekly-cat-item">
+    catsHtml += `<div class="weekly-cat-chip">
       <div class="weekly-cat-dot" style="background:${color}"></div>
-      <div class="weekly-cat-name">${escHtml(c.name)}</div>
-      <div class="weekly-cat-amt">${fmt(c.amount)}원</div>
+      <span class="weekly-cat-name">${escHtml(c.name)}</span>
+      <span class="weekly-cat-amt">${fmt(c.amount)}원</span>
     </div>`;
   });
 
@@ -3526,7 +3527,7 @@ function renderWeeklyReport() {
     <div class="weekly-day-grid">${cols}</div>
     <div class="weekly-summary">
       <div class="weekly-summary-title">카테고리별 지출</div>
-      <div class="weekly-cat-grid">${catsHtml || '<div style="color:var(--text3);font-size:13px">지출 없음</div>'}</div>
+      <div class="weekly-cat-chips">${catsHtml || '<div style="color:var(--text3);font-size:13px">지출 없음</div>'}</div>
       <div class="weekly-total-row">
         <span class="weekly-total-label">주간 총 지출</span>
         <span class="weekly-total-amt">${fmt(data.totalExpense)}원</span>
