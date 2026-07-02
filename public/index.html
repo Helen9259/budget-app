@@ -1355,21 +1355,25 @@ async function api(method, path, body, _retry = true) {
   return data;
 }
 
+// 동시에 여러 API 호출이 401을 받아도 refresh는 한 번만 실행
+let _refreshPromise = null;
+
 async function tryRefreshToken() {
+  if (_refreshPromise) return _refreshPromise;
   const rt = localStorage.getItem('refresh_token');
   if (!rt) return false;
-  try {
-    const res = await fetch('/api/auth/refresh', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: rt })
-    });
+  _refreshPromise = fetch('/api/auth/refresh', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: rt })
+  }).then(async res => {
     if (!res.ok) return false;
     const data = await res.json();
     state.token = data.access_token;
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
     return true;
-  } catch { return false; }
+  }).catch(() => false).finally(() => { _refreshPromise = null; });
+  return _refreshPromise;
 }
 
 // =============================================
@@ -3890,7 +3894,15 @@ if ('serviceWorker' in navigator) {
   setupPullToRefresh(document.getElementById('content-area'), document.getElementById('ptr-indicator-main'), refreshCurrentMainTab);
   setupPullToRefresh(document.getElementById('stats-body'), document.getElementById('ptr-indicator-stats'), loadStats);
   setupSubTabSwipe(document.getElementById('tab-ledger'));
-  if (state.token && state.user) enterApp();
+  // refresh_token이 있으면 항상 갱신 시도 후 진입 (만료된 access_token 처리)
+  if (localStorage.getItem('refresh_token') && state.user) {
+    tryRefreshToken().then(ok => {
+      if (ok || state.token) enterApp();
+      // refresh 실패 + token도 없으면 로그인 화면 유지
+    }).catch(() => { if (state.token) enterApp(); });
+  } else if (state.token && state.user) {
+    enterApp();
+  }
   ['login-email', 'login-pw'].forEach(id =>
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
   );
