@@ -55,9 +55,25 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 * { scrollbar-width: none; }
 
 /* =============================================
+   세션 로딩 스플래시
+   ============================================= */
+#session-loading {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #ede7f6 0%, #f8f4ff 60%, #e8f4fd 100%);
+}
+#session-loading .sl-logo { font-size: 48px; margin-bottom: 16px; }
+#session-loading .sl-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid #e0d4f7; border-top-color: #7e57c2;
+  animation: spin .8s linear infinite; margin-bottom: 14px;
+}
+#session-loading .sl-msg { font-size: 13px; color: #9575cd; }
+
+/* =============================================
    인증 화면
    ============================================= */
-#auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 24px; background: linear-gradient(160deg, #ede7f6 0%, #f8f4ff 60%, #e8f4fd 100%); }
+#auth-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 24px; background: linear-gradient(160deg, #ede7f6 0%, #f8f4ff 60%, #e8f4fd 100%); }
 .auth-logo { font-size: 48px; margin-bottom: 8px; }
 .auth-title { font-size: 24px; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
 .auth-subtitle { font-size: 13px; color: var(--text2); margin-bottom: 36px; }
@@ -596,7 +612,14 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 <body>
 
 <!-- 인증 화면 -->
-<div id="auth-screen">
+<!-- 세션 확인 중 스플래시 (JS가 숨김 처리) -->
+<div id="session-loading">
+  <div class="sl-logo">💰</div>
+  <div class="sl-spinner"></div>
+  <div class="sl-msg">세션 확인 중...</div>
+</div>
+
+<div id="auth-screen" style="display:none">
   <div class="auth-logo">💰</div>
   <div class="auth-title">가계부</div>
   <div class="auth-subtitle">스마트한 가계부 & 자산관리</div>
@@ -1340,16 +1363,49 @@ const CARD_COLORS = ['#b39ddb', '#90caf9', '#a5d6a7', '#ffcc80', '#f48fb1', '#80
 // =============================================
 // API 헬퍼
 // =============================================
-async function api(method, path, body, _retry = true) {
+// 10초 타임아웃 fetch (Railway 슬립 대응)
+async function fetchWithTimeout(input, init, ms = 10000) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(input, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+async function api(method, path, body, _retry = true, _attempt = 1) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
+  console.log(`[API] ${method} ${path} (attempt ${_attempt})`);
+
+  let res;
+  try {
+    res = await fetchWithTimeout(path, opts);
+  } catch (e) {
+    // 타임아웃 또는 네트워크 오류 → 최대 3회 재시도
+    if (_attempt < 3) {
+      console.warn(`[API] 타임아웃/네트워크 오류, 재시도 ${_attempt + 1}/3...`, e.message);
+      await new Promise(r => setTimeout(r, 1500 * _attempt));
+      return api(method, path, body, _retry, _attempt + 1);
+    }
+    throw new Error('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+  }
+
+  console.log(`[API] ${method} ${path} → ${res.status}`);
+
   if (res.status === 401 && _retry) {
+    console.log('[AUTH] 401 수신 → 토큰 갱신 시도');
     const refreshed = await tryRefreshToken();
-    if (refreshed) return api(method, path, body, false);
+    if (refreshed) {
+      console.log('[AUTH] 토큰 갱신 성공 → 재요청');
+      return api(method, path, body, false, 1);
+    }
+    console.warn('[AUTH] 토큰 갱신 실패 → 로그아웃');
     doLogout(); return;
   }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || '오류가 발생했습니다.');
   return data;
@@ -1359,20 +1415,26 @@ async function api(method, path, body, _retry = true) {
 let _refreshPromise = null;
 
 async function tryRefreshToken() {
-  if (_refreshPromise) return _refreshPromise;
+  if (_refreshPromise) {
+    console.log('[AUTH] 갱신 진행 중, 기존 Promise 대기');
+    return _refreshPromise;
+  }
   const rt = localStorage.getItem('refresh_token');
-  if (!rt) return false;
+  if (!rt) { console.warn('[AUTH] refresh_token 없음'); return false; }
+  console.log('[AUTH] 토큰 갱신 요청');
   _refreshPromise = fetch('/api/auth/refresh', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refresh_token: rt })
   }).then(async res => {
-    if (!res.ok) return false;
+    if (!res.ok) { console.warn('[AUTH] 갱신 실패', res.status); return false; }
     const data = await res.json();
     state.token = data.access_token;
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
+    console.log('[AUTH] 토큰 갱신 완료');
     return true;
-  }).catch(() => false).finally(() => { _refreshPromise = null; });
+  }).catch(e => { console.error('[AUTH] 갱신 오류', e); return false; })
+    .finally(() => { _refreshPromise = null; });
   return _refreshPromise;
 }
 
@@ -1470,7 +1532,21 @@ function startTokenRefreshTimer() {
   _tokenRefreshTimer = setInterval(tryRefreshToken, 55 * 60 * 1000);
 }
 
+function showSessionLoading(msg) {
+  const el = document.getElementById('session-loading');
+  if (msg) el.querySelector('.sl-msg').textContent = msg;
+  el.style.display = 'flex';
+}
+function hideSessionLoading() {
+  document.getElementById('session-loading').style.display = 'none';
+}
+function showLoginScreen() {
+  hideSessionLoading();
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
 function enterApp() {
+  hideSessionLoading();
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-screen').classList.add('visible');
   if (state.user) {
@@ -2373,7 +2449,11 @@ async function loadMonth() {
     renderCalendar();
     renderSummary();
     renderCardSummary();
-  } catch { showToast('데이터를 불러오지 못했습니다.'); }
+  } catch (e) {
+    console.error('[loadMonth] 실패:', e.message);
+    // 인증 오류가 아닌 경우 (doLogout이 아닌 단순 네트워크/서버 오류)
+    if (state.token) showToast('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+  }
 }
 
 async function loadCards() {
@@ -3885,7 +3965,7 @@ if ('serviceWorker' in navigator) {
 // =============================================
 // 초기화
 // =============================================
-(function init() {
+(async function init() {
   document.getElementById('month-label').textContent = monthStr(state.year, state.month);
   renderPaymentList();
   renderColorPicker();
@@ -3894,18 +3974,38 @@ if ('serviceWorker' in navigator) {
   setupPullToRefresh(document.getElementById('content-area'), document.getElementById('ptr-indicator-main'), refreshCurrentMainTab);
   setupPullToRefresh(document.getElementById('stats-body'), document.getElementById('ptr-indicator-stats'), loadStats);
   setupSubTabSwipe(document.getElementById('tab-ledger'));
-  // refresh_token이 있으면 항상 갱신 시도 후 진입 (만료된 access_token 처리)
-  if (localStorage.getItem('refresh_token') && state.user) {
-    tryRefreshToken().then(ok => {
-      if (ok || state.token) enterApp();
-      // refresh 실패 + token도 없으면 로그인 화면 유지
-    }).catch(() => { if (state.token) enterApp(); });
-  } else if (state.token && state.user) {
-    enterApp();
-  }
   ['login-email', 'login-pw'].forEach(id =>
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
   );
+
+  // ── 세션 복구 (모든 API 호출 전에 완료되어야 함) ──
+  const hasRefreshToken = !!localStorage.getItem('refresh_token');
+  const hasUser = !!state.user;
+
+  console.log('[INIT] 세션 복구 시작', { hasRefreshToken, hasUser });
+
+  if (hasRefreshToken && hasUser) {
+    showSessionLoading('세션 확인 중...');
+    const ok = await tryRefreshToken();
+    if (ok) {
+      console.log('[INIT] 세션 복구 성공 → 앱 진입');
+      enterApp();
+    } else if (state.token) {
+      // refresh 실패했지만 기존 token이 아직 유효할 수 있음 (만료 임박)
+      console.log('[INIT] 갱신 실패, 기존 토큰으로 진입 시도');
+      enterApp();
+    } else {
+      console.warn('[INIT] 세션 복구 실패 → 로그인 화면');
+      showLoginScreen();
+    }
+  } else if (state.token && hasUser) {
+    console.log('[INIT] refresh_token 없음, 기존 token으로 진입');
+    hideSessionLoading();
+    enterApp();
+  } else {
+    console.log('[INIT] 저장된 세션 없음 → 로그인 화면');
+    showLoginScreen();
+  }
 })();
 </script>
 </body>
