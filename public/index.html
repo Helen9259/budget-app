@@ -1421,20 +1421,44 @@ async function tryRefreshToken() {
   }
   const rt = localStorage.getItem('refresh_token');
   if (!rt) { console.warn('[AUTH] refresh_token 없음'); return false; }
-  console.log('[AUTH] 토큰 갱신 요청');
-  _refreshPromise = fetch('/api/auth/refresh', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: rt })
-  }).then(async res => {
-    if (!res.ok) { console.warn('[AUTH] 갱신 실패', res.status); return false; }
-    const data = await res.json();
-    state.token = data.access_token;
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('refresh_token', data.refresh_token);
-    console.log('[AUTH] 토큰 갱신 완료');
-    return true;
-  }).catch(e => { console.error('[AUTH] 갱신 오류', e); return false; })
-    .finally(() => { _refreshPromise = null; });
+
+  _refreshPromise = (async () => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      console.log(`[AUTH] 토큰 갱신 시도 ${attempt}/3`);
+      try {
+        // fetchWithTimeout 사용 (Railway 슬립 대응, 15초 타임아웃)
+        const res = await fetchWithTimeout('/api/auth/refresh', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: localStorage.getItem('refresh_token') })
+        }, 15000);
+
+        if (res.ok) {
+          const data = await res.json();
+          state.token = data.access_token;
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('refresh_token', data.refresh_token);
+          console.log(`[AUTH] 토큰 갱신 완료 (attempt ${attempt})`);
+          return true;
+        }
+
+        // 401 = Supabase가 refresh_token 거부 → 재시도 무의미
+        if (res.status === 401) {
+          console.warn('[AUTH] refresh_token 만료 또는 무효 (401)');
+          return false;
+        }
+
+        // 서버 오류(5xx 등) → 재시도
+        console.warn(`[AUTH] 갱신 서버 오류 ${res.status}, 재시도...`);
+      } catch (e) {
+        // 타임아웃 또는 네트워크 오류 → 재시도
+        console.warn(`[AUTH] 갱신 타임아웃/네트워크 오류 (attempt ${attempt})`, e.message);
+      }
+      if (attempt < 3) await new Promise(r => setTimeout(r, 2500 * attempt));
+    }
+    console.warn('[AUTH] 토큰 갱신 최종 실패 (3회 시도)');
+    return false;
+  })().finally(() => { _refreshPromise = null; });
+
   return _refreshPromise;
 }
 
@@ -3990,12 +4014,14 @@ if ('serviceWorker' in navigator) {
     if (ok) {
       console.log('[INIT] 세션 복구 성공 → 앱 진입');
       enterApp();
-    } else if (state.token) {
-      // refresh 실패했지만 기존 token이 아직 유효할 수 있음 (만료 임박)
-      console.log('[INIT] 갱신 실패, 기존 토큰으로 진입 시도');
-      enterApp();
     } else {
-      console.warn('[INIT] 세션 복구 실패 → 로그인 화면');
+      // 3회 재시도 후에도 실패 → 세션 데이터 정리 후 로그인 화면
+      // (만료 토큰으로 enterApp() 진입 시 API 401 → doLogout() 연쇄 방지)
+      console.warn('[INIT] 세션 복구 최종 실패 → 로그인 화면');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      state.token = null; state.user = null;
       showLoginScreen();
     }
   } else if (state.token && hasUser) {
