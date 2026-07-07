@@ -285,6 +285,8 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .fixed-sub { font-size: 11px; color: var(--text3); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
 .fixed-amount { font-size: 14px; font-weight: 700; color: var(--expense-color); flex-shrink: 0; margin-right: 4px; }
 .fixed-del-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); color: var(--text3); font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fixed-item-ended { opacity: 0.5; }
+.fixed-end-label { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 500; color: var(--text3); background: var(--surface2); border-radius: 6px; padding: 1px 5px; vertical-align: middle; }
 
 /* 고정지출 폼 */
 .day-input-row { display: flex; align-items: center; gap: 8px; }
@@ -944,6 +946,10 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
         <div class="card-select-list" id="fixed-card-list"></div>
       </div>
     </div>
+    <div class="form-row">
+      <label>종료월 <span style="color:var(--text3);font-weight:400">(선택 · 비우면 무기한)</span></label>
+      <input type="month" id="fixed-end-month" placeholder="YYYY-MM" style="max-width:160px">
+    </div>
     <div style="background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.6">
       📌 추가 시점부터 이번 달이 자동 생성됩니다.<br>
       삭제 시 이번 달부터 생성이 중단되며, 과거 내역은 유지됩니다.<br>
@@ -1482,6 +1488,9 @@ function showTab(tab) {
   if (tab === 'assets') {
     document.getElementById('asset-month-label').textContent = monthStr(assetState.year, assetState.month);
     loadAssets();
+  }
+  if (tab === 'ledger') {
+    generateFixedExpenses().then(() => loadMonth());
   }
 }
 
@@ -2721,6 +2730,7 @@ function openFixedForm(id) {
       if (fe.subcategory) selectFixedSubcat(fe.subcategory);
       if (fe.payment_method) selectFixedPayment(fe.payment_method);
       if (fe.credit_card_id) { state.fixedCardId = fe.credit_card_id; renderFixedCardList(); }
+      if (fe.end_month) document.getElementById('fixed-end-month').value = fe.end_month;
     }
   }
   document.getElementById('fixed-overlay').classList.add('visible');
@@ -2734,6 +2744,7 @@ function resetFixedForm() {
   document.getElementById('fixed-day').value = '';
   document.getElementById('fixed-name').value = '';
   document.getElementById('fixed-amount').value = '';
+  document.getElementById('fixed-end-month').value = '';
   state.fixedCat = ''; state.fixedSubcat = ''; state.fixedPayment = ''; state.fixedCardId = null;
   renderFixedCatList(); renderFixedPaymentList();
   document.getElementById('fixed-card-wrap').style.display = 'none';
@@ -2808,12 +2819,14 @@ async function saveFixedExpense() {
   if (!name) return showToast('항목명을 입력하세요.');
   if (!amount) return showToast('금액을 입력하세요.');
   if (!state.fixedCat) return showToast('카테고리를 선택하세요.');
+  const endMonthRaw = document.getElementById('fixed-end-month').value; // YYYY-MM
   const body = {
     day_of_month: day, name, amount,
     category: state.fixedCat,
     subcategory: state.fixedSubcat || null,
     payment_method: state.fixedPayment || null,
     credit_card_id: state.fixedPayment === '카드' ? (state.fixedCardId || null) : null,
+    end_month: endMonthRaw || null,
   };
   try {
     if (state.editingFixedId) { await api('PUT', `/api/fixed-expenses/${state.editingFixedId}`, body); showToast('수정되었습니다. 다음 달부터 새 금액이 적용됩니다.'); }
@@ -2832,16 +2845,21 @@ function renderFixedList() {
     el.innerHTML = '<div class="fixed-empty"><div class="fixed-empty-icon">📌</div>등록된 고정지출이 없어요<br><span style="font-size:12px">위의 추가 버튼을 눌러 등록하세요</span></div>';
     return;
   }
+  const nowYM = (function() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
   state.fixedExpenses.forEach(fe => {
+    const ended = fe.end_month && fe.end_month < nowYM;
     const div = document.createElement('div');
-    div.className = 'fixed-item';
+    div.className = 'fixed-item' + (ended ? ' fixed-item-ended' : '');
     div.onclick = () => openFixedForm(fe.id);
     const catColor = getCatColor(fe.category);
     const cardName = fe.credit_cards ? fe.credit_cards.name : (fe.payment_method || '');
+    const endLabel = fe.end_month
+      ? `<span class="fixed-end-label">${ended ? '종료됨' : '~' + fe.end_month.replace('-', '.') + '까지'}</span>`
+      : '';
     div.innerHTML = `
       <div class="fixed-day-badge">${fe.day_of_month}<span>일</span></div>
       <div class="fixed-info">
-        <div class="fixed-name">${escHtml(fe.name)}</div>
+        <div class="fixed-name">${escHtml(fe.name)}${endLabel}</div>
         <div class="fixed-sub">
           <span style="width:8px;height:8px;border-radius:50%;background:${catColor};display:inline-block;flex-shrink:0"></span>
           ${escHtml(fe.category)}${fe.subcategory ? ' · ' + escHtml(fe.subcategory) : ''}${cardName ? ' · ' + escHtml(cardName) : ''}

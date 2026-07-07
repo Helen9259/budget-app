@@ -393,15 +393,24 @@ app.post('/api/fixed-expenses/generate', requireAppToken, async (req, res) => {
   let generated = 0;
 
   for (const fe of fes) {
+    // 종료월이 지났으면 생성 건너뜀
+    const effectiveEndMonth = fe.end_month || null;
+
+    // 생성 시작 월 결정: last_generated_month 다음 달, 없으면 created_month, 그것도 없으면 현재 월
     const startMonth = fe.last_generated_month
       ? addMonths(fe.last_generated_month, 1)
-      : fe.created_month;
+      : (fe.created_month || currentMonth);
 
-    if (startMonth > currentMonth) continue;
+    // 생성 상한: 현재 월과 종료월 중 이른 쪽
+    const genUpTo = effectiveEndMonth && effectiveEndMonth < currentMonth
+      ? effectiveEndMonth
+      : currentMonth;
+
+    if (startMonth > genUpTo) continue;
 
     const monthsToGen = [];
     let m = startMonth;
-    while (m <= currentMonth) {
+    while (m <= genUpTo) {
       monthsToGen.push(m);
       m = addMonths(m, 1);
     }
@@ -467,13 +476,14 @@ app.get('/api/fixed-expenses', requireAppToken, async (req, res) => {
     .from('fixed_expenses')
     .select('*, credit_cards(id, name, color)')
     .eq('is_active', true)
+    .order('end_month', { ascending: true, nullsFirst: false })
     .order('day_of_month');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
 app.post('/api/fixed-expenses', requireAppToken, async (req, res) => {
-  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id } = req.body;
+  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id, end_month } = req.body;
   if (!day_of_month || !name || !amount || !category)
     return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
 
@@ -489,6 +499,7 @@ app.post('/api/fixed-expenses', requireAppToken, async (req, res) => {
       category, subcategory: subcategory || null,
       payment_method: payment_method || null,
       credit_card_id: credit_card_id || null,
+      end_month: end_month || null,
       created_month,
       is_active: true,
     }])
@@ -498,7 +509,7 @@ app.post('/api/fixed-expenses', requireAppToken, async (req, res) => {
 });
 
 app.put('/api/fixed-expenses/:id', requireAppToken, async (req, res) => {
-  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id } = req.body;
+  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id, end_month } = req.body;
   const { data, error } = await supabase
     .from('fixed_expenses')
     .update({
@@ -508,6 +519,7 @@ app.put('/api/fixed-expenses/:id', requireAppToken, async (req, res) => {
       category, subcategory: subcategory || null,
       payment_method: payment_method || null,
       credit_card_id: credit_card_id || null,
+      end_month: end_month || null,
     })
     .eq('id', req.params.id)
     .select().single();
