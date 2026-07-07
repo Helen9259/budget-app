@@ -13,6 +13,9 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ 환경변수 누락: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 필요');
   process.exit(1);
 }
+console.log('[ENV] SUPABASE_URL:', SUPABASE_URL ? '✅' : '❌');
+console.log('[ENV] SUPABASE_SERVICE_ROLE_KEY:', SUPABASE_SERVICE_ROLE_KEY ? '✅' : '❌');
+console.log('[ENV] APP_PASSWORD:', APP_PASSWORD ? '✅' : '❌');
 if (!APP_PASSWORD) {
   console.error('❌ 환경변수 누락: APP_PASSWORD 필요');
   process.exit(1);
