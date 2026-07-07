@@ -624,28 +624,9 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
   <div class="auth-title">가계부</div>
   <div class="auth-subtitle">스마트한 가계부 & 자산관리</div>
   <div class="auth-card">
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="showAuthTab('login')">로그인</button>
-      <button class="auth-tab" onclick="showAuthTab('signup')">회원가입</button>
-    </div>
     <div id="auth-error" class="auth-error"></div>
-    <div id="login-form">
-      <div class="form-group"><label>이메일</label><input type="email" id="login-email" placeholder="이메일" autocomplete="email"></div>
-      <div class="form-group"><label>비밀번호</label><input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password"></div>
-      <button class="btn-primary" onclick="doLogin()">로그인</button>
-      <button class="btn-forgot-pw" onclick="showForgotPw()">비밀번호 찾기</button>
-    </div>
-    <div id="forgot-pw-form" style="display:none">
-      <div class="form-group"><label>가입한 이메일</label><input type="email" id="forgot-email" placeholder="이메일" autocomplete="email"></div>
-      <button class="btn-primary" onclick="doForgotPw()">재설정 이메일 보내기</button>
-      <button class="btn-forgot-pw" onclick="showAuthTab('login')">← 로그인으로 돌아가기</button>
-    </div>
-    <div id="signup-form" style="display:none">
-      <div class="form-group"><label>이메일</label><input type="email" id="signup-email" placeholder="이메일" autocomplete="email"></div>
-      <div class="form-group"><label>비밀번호 (6자 이상)</label><input type="password" id="signup-pw" placeholder="비밀번호" autocomplete="new-password"></div>
-      <div class="form-group"><label>비밀번호 확인</label><input type="password" id="signup-pw2" placeholder="비밀번호 확인" autocomplete="new-password"></div>
-      <button class="btn-primary" onclick="doSignup()">회원가입</button>
-    </div>
+    <div class="form-group"><label>비밀번호</label><input type="password" id="login-pw" placeholder="비밀번호를 입력하세요" autocomplete="current-password"></div>
+    <button class="btn-primary" onclick="doLogin()">입장</button>
   </div>
 </div>
 
@@ -1273,8 +1254,6 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 // 상태
 // =============================================
 const state = {
-  token: localStorage.getItem('token') || null,
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
   year: new Date().getFullYear(),
   month: new Date().getMonth() + 1,
   transactions: [],
@@ -1376,7 +1355,8 @@ async function fetchWithTimeout(input, init, ms = 10000) {
 
 async function api(method, path, body, _retry = true, _attempt = 1) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
-  if (state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
+  const appToken = sessionStorage.getItem('app_token');
+  if (appToken) opts.headers['Authorization'] = `Bearer ${appToken}`;
   if (body) opts.body = JSON.stringify(body);
   console.log(`[API] ${method} ${path} (attempt ${_attempt})`);
 
@@ -1396,70 +1376,13 @@ async function api(method, path, body, _retry = true, _attempt = 1) {
   console.log(`[API] ${method} ${path} → ${res.status}`);
 
   if (res.status === 401 && _retry) {
-    console.log('[AUTH] 401 수신 → 토큰 갱신 시도');
-    const refreshed = await tryRefreshToken();
-    if (refreshed) {
-      console.log('[AUTH] 토큰 갱신 성공 → 재요청');
-      return api(method, path, body, false, 1);
-    }
-    console.warn('[AUTH] 토큰 갱신 실패 → 로그아웃');
+    console.warn('[AUTH] 401 수신 → 로그아웃');
     doLogout(); return;
   }
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || '오류가 발생했습니다.');
   return data;
-}
-
-// 동시에 여러 API 호출이 401을 받아도 refresh는 한 번만 실행
-let _refreshPromise = null;
-
-async function tryRefreshToken() {
-  if (_refreshPromise) {
-    console.log('[AUTH] 갱신 진행 중, 기존 Promise 대기');
-    return _refreshPromise;
-  }
-  const rt = localStorage.getItem('refresh_token');
-  if (!rt) { console.warn('[AUTH] refresh_token 없음'); return false; }
-
-  _refreshPromise = (async () => {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      console.log(`[AUTH] 토큰 갱신 시도 ${attempt}/3`);
-      try {
-        // fetchWithTimeout 사용 (Railway 슬립 대응, 15초 타임아웃)
-        const res = await fetchWithTimeout('/api/auth/refresh', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: localStorage.getItem('refresh_token') })
-        }, 15000);
-
-        if (res.ok) {
-          const data = await res.json();
-          state.token = data.access_token;
-          localStorage.setItem('token', data.access_token);
-          localStorage.setItem('refresh_token', data.refresh_token);
-          console.log(`[AUTH] 토큰 갱신 완료 (attempt ${attempt})`);
-          return true;
-        }
-
-        // 401 = Supabase가 refresh_token 거부 → 재시도 무의미
-        if (res.status === 401) {
-          console.warn('[AUTH] refresh_token 만료 또는 무효 (401)');
-          return false;
-        }
-
-        // 서버 오류(5xx 등) → 재시도
-        console.warn(`[AUTH] 갱신 서버 오류 ${res.status}, 재시도...`);
-      } catch (e) {
-        // 타임아웃 또는 네트워크 오류 → 재시도
-        console.warn(`[AUTH] 갱신 타임아웃/네트워크 오류 (attempt ${attempt})`, e.message);
-      }
-      if (attempt < 3) await new Promise(r => setTimeout(r, 2500 * attempt));
-    }
-    console.warn('[AUTH] 토큰 갱신 최종 실패 (3회 시도)');
-    return false;
-  })().finally(() => { _refreshPromise = null; });
-
-  return _refreshPromise;
 }
 
 // =============================================
@@ -1483,77 +1406,27 @@ function isExcluded(cat) {
 // =============================================
 // 인증
 // =============================================
-function showAuthTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((b, i) => b.classList.toggle('active', (i === 0) === (tab === 'login')));
-  document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
-  document.getElementById('signup-form').style.display = tab === 'signup' ? '' : 'none';
-  document.getElementById('forgot-pw-form').style.display = 'none';
-  document.getElementById('auth-error').style.display = 'none';
-}
-function showForgotPw() {
-  document.getElementById('login-form').style.display = 'none';
-  document.getElementById('forgot-pw-form').style.display = '';
-  document.getElementById('auth-error').style.display = 'none';
-  document.getElementById('forgot-email').value = document.getElementById('login-email').value;
-}
-async function doForgotPw() {
-  const email = document.getElementById('forgot-email').value.trim();
-  if (!email) return showAuthError('이메일을 입력하세요.');
-  try {
-    await api('POST', '/api/auth/reset-password', { email });
-    document.getElementById('auth-error').style.display = 'none';
-    showToast('비밀번호 재설정 이메일을 발송했습니다. 이메일을 확인해주세요.');
-    showAuthTab('login');
-  } catch (e) { showAuthError(e.message); }
-}
 function showAuthError(msg) { const el = document.getElementById('auth-error'); el.textContent = msg; el.style.display = 'block'; }
 
 async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
   const pw = document.getElementById('login-pw').value;
-  if (!email || !pw) return showAuthError('이메일과 비밀번호를 입력하세요.');
+  if (!pw) return showAuthError('비밀번호를 입력하세요.');
   try {
-    const data = await api('POST', '/api/auth/login', { email, password: pw });
-    state.token = data.access_token;
-    state.user = data.user;
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('refresh_token', data.refresh_token || '');
-    localStorage.setItem('user', JSON.stringify(data.user));
+    const res = await fetchWithTimeout('/api/auth/verify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    }, 15000);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return showAuthError(data.error || '비밀번호가 올바르지 않아요.');
+    sessionStorage.setItem('app_token', data.token);
     enterApp();
-  } catch (e) { showAuthError(e.message); }
-}
-
-async function doSignup() {
-  const email = document.getElementById('signup-email').value.trim();
-  const pw = document.getElementById('signup-pw').value;
-  const pw2 = document.getElementById('signup-pw2').value;
-  if (!email || !pw) return showAuthError('모든 항목을 입력하세요.');
-  if (pw.length < 6) return showAuthError('비밀번호는 6자 이상이어야 합니다.');
-  if (pw !== pw2) return showAuthError('비밀번호가 일치하지 않습니다.');
-  try {
-    await api('POST', '/api/auth/signup', { email, password: pw });
-    showAuthError('');
-    showToast('회원가입 완료! 로그인해주세요.');
-    showAuthTab('login');
-    document.getElementById('login-email').value = email;
-  } catch (e) { showAuthError(e.message); }
+  } catch (e) { showAuthError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'); }
 }
 
 function doLogout() {
-  state.token = null; state.user = null;
-  if (_tokenRefreshTimer) { clearInterval(_tokenRefreshTimer); _tokenRefreshTimer = null; }
-  localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('user');
+  sessionStorage.removeItem('app_token');
   document.getElementById('main-screen').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
-}
-
-let _tokenRefreshTimer = null;
-
-function startTokenRefreshTimer() {
-  if (_tokenRefreshTimer) clearInterval(_tokenRefreshTimer);
-  if (!localStorage.getItem('refresh_token')) return;
-  // 55분마다 토큰 자동 갱신 (Supabase 기본 만료 1시간)
-  _tokenRefreshTimer = setInterval(tryRefreshToken, 55 * 60 * 1000);
 }
 
 function showSessionLoading(msg) {
@@ -1573,12 +1446,6 @@ function enterApp() {
   hideSessionLoading();
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-screen').classList.add('visible');
-  if (state.user) {
-    document.getElementById('user-email-display').textContent = state.user.email;
-    document.getElementById('user-avatar').textContent = state.user.email[0].toUpperCase();
-  }
-  // 세션 토큰 자동 갱신 시작
-  startTokenRefreshTimer();
   // 병렬 초기화
   Promise.all([
     loadCategories(),
@@ -2476,7 +2343,7 @@ async function loadMonth() {
   } catch (e) {
     console.error('[loadMonth] 실패:', e.message);
     // 인증 오류가 아닌 경우 (doLogout이 아닌 단순 네트워크/서버 오류)
-    if (state.token) showToast('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    if (sessionStorage.getItem('app_token')) showToast('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
   }
 }
 
@@ -3849,7 +3716,7 @@ function wRoundRect(ctx, x, y, w, h, r) {
 // =============================================
 async function exportCSV() {
   try {
-    const res = await fetch('/api/transactions/export', { headers: { Authorization: `Bearer ${state.token}` } });
+    const res = await fetch('/api/transactions/export', { headers: { Authorization: `Bearer ${sessionStorage.getItem('app_token')}` } });
     if (!res.ok) throw new Error('내보내기 실패');
     const blob = await res.blob();
     const today = new Date().toISOString().slice(0, 10);
@@ -3998,38 +3865,13 @@ if ('serviceWorker' in navigator) {
   setupPullToRefresh(document.getElementById('content-area'), document.getElementById('ptr-indicator-main'), refreshCurrentMainTab);
   setupPullToRefresh(document.getElementById('stats-body'), document.getElementById('ptr-indicator-stats'), loadStats);
   setupSubTabSwipe(document.getElementById('tab-ledger'));
-  ['login-email', 'login-pw'].forEach(id =>
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); })
-  );
+  document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-  // ── 세션 복구 (모든 API 호출 전에 완료되어야 함) ──
-  const hasRefreshToken = !!localStorage.getItem('refresh_token');
-  const hasUser = !!state.user;
-
-  console.log('[INIT] 세션 복구 시작', { hasRefreshToken, hasUser });
-
-  if (hasRefreshToken && hasUser) {
-    showSessionLoading('세션 확인 중...');
-    const ok = await tryRefreshToken();
-    if (ok) {
-      console.log('[INIT] 세션 복구 성공 → 앱 진입');
-      enterApp();
-    } else {
-      // 3회 재시도 후에도 실패 → 세션 데이터 정리 후 로그인 화면
-      // (만료 토큰으로 enterApp() 진입 시 API 401 → doLogout() 연쇄 방지)
-      console.warn('[INIT] 세션 복구 최종 실패 → 로그인 화면');
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      state.token = null; state.user = null;
-      showLoginScreen();
-    }
-  } else if (state.token && hasUser) {
-    console.log('[INIT] refresh_token 없음, 기존 token으로 진입');
-    hideSessionLoading();
+  if (sessionStorage.getItem('app_token')) {
+    console.log('[INIT] 저장된 세션 확인 → 앱 진입');
     enterApp();
   } else {
-    console.log('[INIT] 저장된 세션 없음 → 로그인 화면');
+    console.log('[INIT] 세션 없음 → 비밀번호 입력 화면');
     showLoginScreen();
   }
 })();
