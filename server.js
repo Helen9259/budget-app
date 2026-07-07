@@ -1,29 +1,35 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const ws = require('ws');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const APP_PASSWORD = process.env.APP_PASSWORD;
 
-console.log('🔍 env keys:', Object.keys(process.env).filter(k => k.startsWith('SUPABASE')));
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
-  console.error('❌ 환경변수 누락:', {
-    SUPABASE_URL: !!SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY,
-    SUPABASE_ANON_KEY: !!SUPABASE_ANON_KEY,
-  });
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ 환경변수 누락: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 필요');
+  process.exit(1);
+}
+if (!APP_PASSWORD) {
+  console.error('❌ 환경변수 누락: APP_PASSWORD 필요');
   process.exit(1);
 }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const supabaseOpts = { realtime: { transport: ws } };
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, supabaseOpts);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  realtime: { transport: ws },
+});
+
+// 비밀번호 기반 세션 토큰 (HMAC — 서버 재시작 후에도 동일한 값)
+const SESSION_TOKEN = crypto
+  .createHmac('sha256', APP_PASSWORD)
+  .update('budget-app-session')
+  .digest('hex');
 
 app.use(cors());
 app.use(express.json());
@@ -38,104 +44,31 @@ function addMonths(monthStr, n) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function getBillingCycle(paymentDay, now = new Date()) {
-  const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
-  const ld = (yr, mo) => new Date(yr, mo, 0).getDate();
-  const cl = (yr, mo, dy) => Math.min(dy, ld(yr, mo));
-  const pad = n => String(n).padStart(2, '0');
-
-  const pd = cl(y, m, paymentDay);
-
-  if (d <= pd) {
-    const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1;
-    const sd = cl(py, pm, paymentDay) + 1;
-    const start = sd > ld(py, pm)
-      ? `${y}-${pad(m)}-01`
-      : `${py}-${pad(pm)}-${pad(sd)}`;
-    return { start, end: `${y}-${pad(m)}-${pad(pd)}` };
-  } else {
-    const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
-    return {
-      start: `${y}-${pad(m)}-${pad(pd + 1)}`,
-      end: `${ny}-${pad(nm)}-${pad(cl(ny, nm, paymentDay))}`,
-    };
-  }
-}
-
 // =============================================
-// JWT 미들웨어
+// 인증 미들웨어 (단순 토큰 검증)
 // =============================================
-async function requireAuth(req, res, next) {
+function requireAppToken(req, res, next) {
   const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer '))
+  if (!auth || auth !== `Bearer ${SESSION_TOKEN}`)
     return res.status(401).json({ error: '인증이 필요합니다.' });
-
-  const token = auth.split(' ')[1];
-  const anonClient = createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY,
-    { ...supabaseOpts, global: { headers: { Authorization: `Bearer ${token}` } } }
-  );
-  const { data: { user }, error } = await anonClient.auth.getUser();
-  if (error || !user)
-    return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
-
-  req.user = user;
   next();
 }
 
 // =============================================
 // 인증 API
 // =============================================
-app.post('/api/auth/signup', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ error: '이메일과 비밀번호를 입력하세요.' });
-
-  const { data, error } = await supabase.auth.admin.createUser({
-    email, password, email_confirm: true,
-  });
-  if (error) return res.status(400).json({ error: error.message });
-  res.json({ message: '회원가입이 완료되었습니다.', user: { id: data.user.id, email: data.user.email } });
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ error: '이메일과 비밀번호를 입력하세요.' });
-
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, supabaseOpts);
-  const { data, error } = await anonClient.auth.signInWithPassword({ email, password });
-  if (error) return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
-  res.json({
-    access_token: data.session.access_token,
-    refresh_token: data.session.refresh_token,
-    user: { id: data.user.id, email: data.user.email },
-  });
-});
-
-app.post('/api/auth/refresh', async (req, res) => {
-  const { refresh_token } = req.body;
-  if (!refresh_token) return res.status(400).json({ error: 'refresh_token이 필요합니다.' });
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, supabaseOpts);
-  const { data, error } = await anonClient.auth.refreshSession({ refresh_token });
-  if (error) return res.status(401).json({ error: error.message });
-  res.json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
-});
-
-app.post('/api/auth/reset-password', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: '이메일을 입력하세요.' });
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, supabaseOpts);
-  const { error } = await anonClient.auth.resetPasswordForEmail(email);
-  if (error) return res.status(400).json({ error: error.message });
-  res.json({ message: '비밀번호 재설정 이메일을 발송했습니다.' });
+app.post('/api/auth/verify', async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: '비밀번호를 입력하세요.' });
+  if (password !== APP_PASSWORD)
+    return res.status(401).json({ error: '비밀번호가 올바르지 않아요.' });
+  res.json({ ok: true, token: SESSION_TOKEN });
 });
 
 // =============================================
 // 거래 내역 API
 // =============================================
-app.get('/api/transactions', requireAuth, async (req, res) => {
+app.get('/api/transactions', requireAppToken, async (req, res) => {
   const { year, month } = req.query;
   if (!year || !month) return res.status(400).json({ error: 'year, month 파라미터가 필요합니다.' });
 
@@ -145,7 +78,6 @@ app.get('/api/transactions', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
-    .eq('user_id', req.user.id)
     .gte('date', startDate)
     .lte('date', endDate)
     .order('date', { ascending: true })
@@ -155,7 +87,7 @@ app.get('/api/transactions', requireAuth, async (req, res) => {
   res.json(data);
 });
 
-app.post('/api/transactions', requireAuth, async (req, res) => {
+app.post('/api/transactions', requireAppToken, async (req, res) => {
   const { date, type, amount, content, category, subcategory, payment_method, credit_card_id, memo, is_fixed, fixed_expense_id } = req.body;
   if (!date || !type || !amount || !content || !category)
     return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
@@ -163,7 +95,7 @@ app.post('/api/transactions', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('transactions')
     .insert([{
-      user_id: req.user.id, date, type, amount, content, category,
+      date, type, amount, content, category,
       subcategory, payment_method,
       credit_card_id: credit_card_id || null,
       memo, is_fixed: !!is_fixed,
@@ -174,31 +106,29 @@ app.post('/api/transactions', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
-app.put('/api/transactions/:id', requireAuth, async (req, res) => {
+app.put('/api/transactions/:id', requireAppToken, async (req, res) => {
   const { date, type, amount, content, category, subcategory, payment_method, credit_card_id, memo, is_fixed } = req.body;
   const { data, error } = await supabase
     .from('transactions')
     .update({ date, type, amount, content, category, subcategory, payment_method, credit_card_id: credit_card_id || null, memo, is_fixed: !!is_fixed })
     .eq('id', req.params.id)
-    .eq('user_id', req.user.id)
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.status(404).json({ error: '내역을 찾을 수 없습니다.' });
   res.json(data);
 });
 
-app.delete('/api/transactions/:id', requireAuth, async (req, res) => {
+app.delete('/api/transactions/:id', requireAppToken, async (req, res) => {
   const { error } = await supabase
     .from('transactions')
     .delete()
-    .eq('id', req.params.id)
-    .eq('user_id', req.user.id);
+    .eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: '삭제되었습니다.' });
 });
 
 // 통계 API
-app.get('/api/stats', requireAuth, async (req, res) => {
+app.get('/api/stats', requireAppToken, async (req, res) => {
   const { year, month, type = 'expense' } = req.query;
   if (!year || !month) return res.status(400).json({ error: 'year, month 필요' });
 
@@ -211,8 +141,8 @@ app.get('/api/stats', requireAuth, async (req, res) => {
   const pEnd = new Date(py, pm, 0).toISOString().split('T')[0];
 
   const [{ data: curr }, { data: prev }] = await Promise.all([
-    supabase.from('transactions').select('*').eq('user_id', req.user.id).eq('type', type).gte('date', startDate).lte('date', endDate),
-    supabase.from('transactions').select('*').eq('user_id', req.user.id).eq('type', type).gte('date', pStart).lte('date', pEnd),
+    supabase.from('transactions').select('*').eq('type', type).gte('date', startDate).lte('date', endDate),
+    supabase.from('transactions').select('*').eq('type', type).gte('date', pStart).lte('date', pEnd),
   ]);
 
   const EXCLUDED = ['저축', '투자'];
@@ -247,9 +177,9 @@ app.get('/api/stats', requireAuth, async (req, res) => {
 });
 
 // 검색 API (/:id보다 먼저)
-app.get('/api/transactions/search', requireAuth, async (req, res) => {
+app.get('/api/transactions/search', requireAppToken, async (req, res) => {
   const { q, date_from, date_to, category, payment, amount_min, amount_max } = req.query;
-  let query = supabase.from('transactions').select('*').eq('user_id', req.user.id);
+  let query = supabase.from('transactions').select('*');
   if (q) query = query.ilike('content', `%${q}%`);
   if (date_from) query = query.gte('date', date_from);
   if (date_to) query = query.lte('date', date_to);
@@ -263,10 +193,9 @@ app.get('/api/transactions/search', requireAuth, async (req, res) => {
   res.json(data);
 });
 
-app.get('/api/transactions/export', requireAuth, async (req, res) => {
+app.get('/api/transactions/export', requireAppToken, async (req, res) => {
   const { data, error } = await supabase
     .from('transactions').select('*')
-    .eq('user_id', req.user.id)
     .order('date', { ascending: true })
     .order('created_at', { ascending: true });
 
@@ -306,18 +235,16 @@ const DEFAULT_CATEGORIES = [
   { type: 'income',  name: '기타 수입', icon: '🌱', color: '#D0E8FF', sort_order: 2,  subs: ['용돈','환급','판매'] },
 ];
 
-// 주의: /api/categories/seed 는 /:id 보다 먼저 등록
-app.post('/api/categories/seed', requireAuth, async (req, res) => {
+app.post('/api/categories/seed', requireAppToken, async (req, res) => {
   const { count } = await supabase
-    .from('categories').select('*', { count: 'exact', head: true })
-    .eq('user_id', req.user.id);
+    .from('categories').select('*', { count: 'exact', head: true });
   if (count > 0) return res.json({ seeded: false, count });
 
   const rows = [];
   DEFAULT_CATEGORIES.forEach(c => {
-    rows.push({ user_id: req.user.id, type: c.type, name: c.name, icon: c.icon, color: c.color, sort_order: c.sort_order, is_active: true, parent: null });
+    rows.push({ type: c.type, name: c.name, icon: c.icon, color: c.color, sort_order: c.sort_order, is_active: true, parent: null });
     (c.subs || []).forEach((s, si) =>
-      rows.push({ user_id: req.user.id, type: c.type, name: s, icon: null, color: null, sort_order: si, is_active: true, parent: c.name })
+      rows.push({ type: c.type, name: s, icon: null, color: null, sort_order: si, is_active: true, parent: c.name })
     );
   });
   const { error } = await supabase.from('categories').insert(rows);
@@ -325,27 +252,26 @@ app.post('/api/categories/seed', requireAuth, async (req, res) => {
   res.json({ seeded: true });
 });
 
-app.get('/api/categories', requireAuth, async (req, res) => {
+app.get('/api/categories', requireAppToken, async (req, res) => {
   const { data, error } = await supabase
     .from('categories').select('*')
-    .eq('user_id', req.user.id)
     .order('sort_order').order('created_at');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
-app.post('/api/categories', requireAuth, async (req, res) => {
+app.post('/api/categories', requireAppToken, async (req, res) => {
   const { type, name, parent, icon, color, sort_order } = req.body;
   if (!type || !name) return res.status(400).json({ error: 'type, name 필요' });
   const { data, error } = await supabase
     .from('categories')
-    .insert([{ user_id: req.user.id, type, name, parent: parent || null, icon: icon || null, color: color || null, sort_order: sort_order || 0, is_active: true }])
+    .insert([{ type, name, parent: parent || null, icon: icon || null, color: color || null, sort_order: sort_order || 0, is_active: true }])
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data);
 });
 
-app.put('/api/categories/:id', requireAuth, async (req, res) => {
+app.put('/api/categories/:id', requireAppToken, async (req, res) => {
   const { name, icon, color, is_active, sort_order } = req.body;
   const update = {};
   if (name !== undefined) update.name = name;
@@ -355,17 +281,17 @@ app.put('/api/categories/:id', requireAuth, async (req, res) => {
   if (sort_order !== undefined) update.sort_order = sort_order;
   const { data, error } = await supabase
     .from('categories').update(update)
-    .eq('id', req.params.id).eq('user_id', req.user.id)
+    .eq('id', req.params.id)
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.status(404).json({ error: '카테고리를 찾을 수 없습니다.' });
   res.json(data);
 });
 
-app.delete('/api/categories/:id', requireAuth, async (req, res) => {
+app.delete('/api/categories/:id', requireAppToken, async (req, res) => {
   const { error } = await supabase
     .from('categories').delete()
-    .eq('id', req.params.id).eq('user_id', req.user.id);
+    .eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: '삭제됨' });
 });
@@ -373,11 +299,9 @@ app.delete('/api/categories/:id', requireAuth, async (req, res) => {
 // =============================================
 // 신용카드 API
 // =============================================
-
-// 주의: /api/credit-cards/usage 는 /:id 보다 먼저 등록
-app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
+app.get('/api/credit-cards/usage', requireAppToken, async (req, res) => {
   const { data: cards, error } = await supabase
-    .from('credit_cards').select('*').eq('user_id', req.user.id);
+    .from('credit_cards').select('*');
   if (error) return res.status(500).json({ error: error.message });
 
   const now = new Date();
@@ -385,13 +309,11 @@ app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
   const results = [];
 
   for (const card of cards) {
-    // 모든 카드 당월 1일~말일 기준
     const start = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const { data: txs } = await supabase
       .from('transactions').select('amount')
-      .eq('user_id', req.user.id)
       .eq('credit_card_id', card.id)
       .eq('type', 'expense')
       .gte('date', start).lte('date', end);
@@ -412,21 +334,21 @@ app.get('/api/credit-cards/usage', requireAuth, async (req, res) => {
   res.json(results);
 });
 
-app.get('/api/credit-cards', requireAuth, async (req, res) => {
+app.get('/api/credit-cards', requireAppToken, async (req, res) => {
   const { data, error } = await supabase
-    .from('credit_cards').select('*').eq('user_id', req.user.id).order('created_at');
+    .from('credit_cards').select('*').order('created_at');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-app.post('/api/credit-cards', requireAuth, async (req, res) => {
-  const { name, card_type, limit_amount, payment_day, color } = req.body;
+app.post('/api/credit-cards', requireAppToken, async (req, res) => {
+  const { name, card_type, limit_amount, color } = req.body;
   if (!name) return res.status(400).json({ error: '카드명을 입력하세요.' });
   const type = card_type === 'debit' ? 'debit' : 'credit';
   const { data, error } = await supabase
     .from('credit_cards')
     .insert([{
-      user_id: req.user.id, name,
+      name,
       card_type: type,
       limit_amount: parseInt(limit_amount) || 0,
       color: color || '#b39ddb',
@@ -436,27 +358,22 @@ app.post('/api/credit-cards', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
-app.put('/api/credit-cards/:id', requireAuth, async (req, res) => {
-  const { name, card_type, limit_amount, payment_day, color } = req.body;
+app.put('/api/credit-cards/:id', requireAppToken, async (req, res) => {
+  const { name, card_type, limit_amount, color } = req.body;
   const type = card_type === 'debit' ? 'debit' : 'credit';
   const { data, error } = await supabase
     .from('credit_cards')
-    .update({
-      name,
-      card_type: type,
-      limit_amount: parseInt(limit_amount) || 0,
-      color,
-    })
-    .eq('id', req.params.id).eq('user_id', req.user.id)
+    .update({ name, card_type: type, limit_amount: parseInt(limit_amount) || 0, color })
+    .eq('id', req.params.id)
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-app.delete('/api/credit-cards/:id', requireAuth, async (req, res) => {
+app.delete('/api/credit-cards/:id', requireAppToken, async (req, res) => {
   const { error } = await supabase
     .from('credit_cards').delete()
-    .eq('id', req.params.id).eq('user_id', req.user.id);
+    .eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: '삭제되었습니다.' });
 });
@@ -464,30 +381,36 @@ app.delete('/api/credit-cards/:id', requireAuth, async (req, res) => {
 // =============================================
 // 고정지출 API
 // =============================================
-
-// 주의: /generate 는 /:id 보다 먼저 등록
-app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
-  const userId = req.user.id;
+app.post('/api/fixed-expenses/generate', requireAppToken, async (req, res) => {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const { data: fes, error } = await supabase
     .from('fixed_expenses').select('*')
-    .eq('user_id', userId).eq('is_active', true);
+    .eq('is_active', true);
   if (error) return res.status(500).json({ error: error.message });
 
   let generated = 0;
 
   for (const fe of fes) {
+    // 종료월이 지났으면 생성 건너뜀
+    const effectiveEndMonth = fe.end_month || null;
+
+    // 생성 시작 월 결정: last_generated_month 다음 달, 없으면 created_month, 그것도 없으면 현재 월
     const startMonth = fe.last_generated_month
       ? addMonths(fe.last_generated_month, 1)
-      : fe.created_month;
+      : (fe.created_month || currentMonth);
 
-    if (startMonth > currentMonth) continue;
+    // 생성 상한: 현재 월과 종료월 중 이른 쪽
+    const genUpTo = effectiveEndMonth && effectiveEndMonth < currentMonth
+      ? effectiveEndMonth
+      : currentMonth;
+
+    if (startMonth > genUpTo) continue;
 
     const monthsToGen = [];
     let m = startMonth;
-    while (m <= currentMonth) {
+    while (m <= genUpTo) {
       monthsToGen.push(m);
       m = addMonths(m, 1);
     }
@@ -500,11 +423,9 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
       const day = Math.min(fe.day_of_month, lastDay);
       const date = `${month}-${String(day).padStart(2, '0')}`;
 
-      // Check by fixed_expense_id first; fall back to content+date to catch legacy rows
       let existing = null;
       const { data: byId } = await supabase
         .from('transactions').select('id')
-        .eq('user_id', userId)
         .eq('fixed_expense_id', fe.id)
         .eq('date', date)
         .maybeSingle();
@@ -513,7 +434,6 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
       } else {
         const { data: byContent } = await supabase
           .from('transactions').select('id')
-          .eq('user_id', userId)
           .eq('content', fe.name)
           .eq('date', date)
           .eq('is_fixed', true)
@@ -523,7 +443,7 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
 
       if (!existing) {
         const { error: insErr } = await supabase.from('transactions').insert([{
-          user_id: userId, date,
+          date,
           type: 'expense',
           amount: fe.amount,
           content: fe.name,
@@ -535,7 +455,6 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
           fixed_expense_id: fe.id,
         }]);
         if (!insErr) { generated++; lastConfirmedMonth = month; }
-        // If insert failed, stop advancing — retry next time
         else break;
       } else {
         lastConfirmedMonth = month;
@@ -552,19 +471,19 @@ app.post('/api/fixed-expenses/generate', requireAuth, async (req, res) => {
   res.json({ generated, currentMonth });
 });
 
-app.get('/api/fixed-expenses', requireAuth, async (req, res) => {
+app.get('/api/fixed-expenses', requireAppToken, async (req, res) => {
   const { data, error } = await supabase
     .from('fixed_expenses')
     .select('*, credit_cards(id, name, color)')
-    .eq('user_id', req.user.id)
     .eq('is_active', true)
+    .order('end_month', { ascending: true, nullsFirst: false })
     .order('day_of_month');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-app.post('/api/fixed-expenses', requireAuth, async (req, res) => {
-  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id } = req.body;
+app.post('/api/fixed-expenses', requireAppToken, async (req, res) => {
+  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id, end_month } = req.body;
   if (!day_of_month || !name || !amount || !category)
     return res.status(400).json({ error: '필수 항목이 누락되었습니다.' });
 
@@ -574,13 +493,13 @@ app.post('/api/fixed-expenses', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('fixed_expenses')
     .insert([{
-      user_id: req.user.id,
       day_of_month: parseInt(day_of_month),
       name,
       amount: parseInt(String(amount).replace(/,/g, '')),
       category, subcategory: subcategory || null,
       payment_method: payment_method || null,
       credit_card_id: credit_card_id || null,
+      end_month: end_month || null,
       created_month,
       is_active: true,
     }])
@@ -589,8 +508,8 @@ app.post('/api/fixed-expenses', requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
-app.put('/api/fixed-expenses/:id', requireAuth, async (req, res) => {
-  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id } = req.body;
+app.put('/api/fixed-expenses/:id', requireAppToken, async (req, res) => {
+  const { day_of_month, name, amount, category, subcategory, payment_method, credit_card_id, end_month } = req.body;
   const { data, error } = await supabase
     .from('fixed_expenses')
     .update({
@@ -600,20 +519,19 @@ app.put('/api/fixed-expenses/:id', requireAuth, async (req, res) => {
       category, subcategory: subcategory || null,
       payment_method: payment_method || null,
       credit_card_id: credit_card_id || null,
+      end_month: end_month || null,
     })
     .eq('id', req.params.id)
-    .eq('user_id', req.user.id)
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-app.delete('/api/fixed-expenses/:id', requireAuth, async (req, res) => {
+app.delete('/api/fixed-expenses/:id', requireAppToken, async (req, res) => {
   const { error } = await supabase
     .from('fixed_expenses')
     .update({ is_active: false })
-    .eq('id', req.params.id)
-    .eq('user_id', req.user.id);
+    .eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: '삭제되었습니다.' });
 });
@@ -621,18 +539,18 @@ app.delete('/api/fixed-expenses/:id', requireAuth, async (req, res) => {
 // =============================================
 // 자산 스냅샷 API
 // =============================================
-app.get('/api/assets/snapshot', requireAuth, async (req, res) => {
+app.get('/api/assets/snapshot', requireAppToken, async (req, res) => {
   const { year_month } = req.query;
   if (!year_month) return res.status(400).json({ error: 'year_month 필요' });
   const { data, error } = await supabase
     .from('asset_snapshots').select('*')
-    .eq('user_id', req.user.id).eq('year_month', year_month)
+    .eq('year_month', year_month)
     .order('type').order('name');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
-app.get('/api/assets/history', requireAuth, async (req, res) => {
+app.get('/api/assets/history', requireAppToken, async (req, res) => {
   const now = new Date();
   const months = [];
   for (let i = 11; i >= 0; i--) {
@@ -641,7 +559,6 @@ app.get('/api/assets/history', requireAuth, async (req, res) => {
   }
   const { data, error } = await supabase
     .from('asset_snapshots').select('*')
-    .eq('user_id', req.user.id)
     .gte('year_month', months[0]).lte('year_month', months[months.length - 1]);
   if (error) return res.status(500).json({ error: error.message });
 
@@ -658,18 +575,17 @@ app.get('/api/assets/history', requireAuth, async (req, res) => {
   })));
 });
 
-app.put('/api/assets/snapshot', requireAuth, async (req, res) => {
+app.put('/api/assets/snapshot', requireAppToken, async (req, res) => {
   const { year_month, items } = req.body;
   if (!year_month || !Array.isArray(items))
     return res.status(400).json({ error: 'year_month, items 필요' });
 
   await supabase.from('asset_snapshots')
-    .delete().eq('user_id', req.user.id).eq('year_month', year_month);
+    .delete().eq('year_month', year_month);
 
   if (items.length === 0) return res.json({ saved: 0 });
 
   const rows = items.map(item => ({
-    user_id: req.user.id,
     year_month,
     type: item.type,
     name: item.name,
@@ -684,67 +600,63 @@ app.put('/api/assets/snapshot', requireAuth, async (req, res) => {
 // 지출수단 API
 // =============================================
 const DEFAULT_PAYMENT_METHODS = [
-  { name: '카드',     order_index: 0, is_default: true },
-  { name: '현금',     order_index: 1, is_default: true },
+  { name: '카드',      order_index: 0, is_default: true },
+  { name: '현금',      order_index: 1, is_default: true },
   { name: '카카오페이', order_index: 2, is_default: true },
   { name: '네이버페이', order_index: 3, is_default: true },
-  { name: '토스',     order_index: 4, is_default: true },
-  { name: '계좌이체', order_index: 5, is_default: true },
-  { name: '기타',     order_index: 6, is_default: true },
+  { name: '토스',      order_index: 4, is_default: true },
+  { name: '계좌이체',  order_index: 5, is_default: true },
+  { name: '기타',      order_index: 6, is_default: true },
 ];
 
-app.post('/api/payment-methods/seed', requireAuth, async (req, res) => {
+app.post('/api/payment-methods/seed', requireAppToken, async (req, res) => {
   const { count } = await supabase
-    .from('payment_methods').select('*', { count: 'exact', head: true })
-    .eq('user_id', req.user.id);
+    .from('payment_methods').select('*', { count: 'exact', head: true });
   if (count > 0) return res.json({ seeded: false, count });
-  const rows = DEFAULT_PAYMENT_METHODS.map(m => ({ ...m, user_id: req.user.id }));
-  const { error } = await supabase.from('payment_methods').insert(rows);
+  const { error } = await supabase.from('payment_methods').insert(DEFAULT_PAYMENT_METHODS);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ seeded: true });
 });
 
-app.get('/api/payment-methods', requireAuth, async (req, res) => {
+app.get('/api/payment-methods', requireAppToken, async (req, res) => {
   const { data, error } = await supabase
     .from('payment_methods').select('*')
-    .eq('user_id', req.user.id)
     .order('order_index').order('created_at');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
-app.post('/api/payment-methods', requireAuth, async (req, res) => {
+app.post('/api/payment-methods', requireAppToken, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: '이름을 입력하세요.' });
   const { count } = await supabase
-    .from('payment_methods').select('*', { count: 'exact', head: true })
-    .eq('user_id', req.user.id);
+    .from('payment_methods').select('*', { count: 'exact', head: true });
   const { data, error } = await supabase
     .from('payment_methods')
-    .insert([{ user_id: req.user.id, name, order_index: count || 0, is_default: false }])
+    .insert([{ name, order_index: count || 0, is_default: false }])
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data);
 });
 
-app.put('/api/payment-methods/:id', requireAuth, async (req, res) => {
+app.put('/api/payment-methods/:id', requireAppToken, async (req, res) => {
   const { name, order_index } = req.body;
   const update = {};
   if (name !== undefined) update.name = name;
   if (order_index !== undefined) update.order_index = order_index;
   const { data, error } = await supabase
     .from('payment_methods').update(update)
-    .eq('id', req.params.id).eq('user_id', req.user.id)
+    .eq('id', req.params.id)
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.status(404).json({ error: '찾을 수 없습니다.' });
   res.json(data);
 });
 
-app.delete('/api/payment-methods/:id', requireAuth, async (req, res) => {
+app.delete('/api/payment-methods/:id', requireAppToken, async (req, res) => {
   const { error } = await supabase
     .from('payment_methods').delete()
-    .eq('id', req.params.id).eq('user_id', req.user.id);
+    .eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ message: '삭제됨' });
 });
@@ -752,19 +664,18 @@ app.delete('/api/payment-methods/:id', requireAuth, async (req, res) => {
 // =============================================
 // 대출 API
 // =============================================
-app.get('/api/loans', requireAuth, async (req, res) => {
+app.get('/api/loans', requireAppToken, async (req, res) => {
   const { data, error } = await supabase
-    .from('loans').select('*').eq('user_id', req.user.id).order('created_at');
+    .from('loans').select('*').order('created_at');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
-app.put('/api/loans', requireAuth, async (req, res) => {
+app.put('/api/loans', requireAppToken, async (req, res) => {
   const { loans } = req.body;
   if (!Array.isArray(loans)) return res.status(400).json({ error: 'loans 배열 필요' });
 
-  const { data: existing } = await supabase
-    .from('loans').select('id').eq('user_id', req.user.id);
+  const { data: existing } = await supabase.from('loans').select('id');
   const keepIds = loans.filter(l => l.id).map(l => l.id);
   const deleteIds = (existing || []).map(l => l.id).filter(id => !keepIds.includes(id));
 
@@ -773,19 +684,18 @@ app.put('/api/loans', requireAuth, async (req, res) => {
 
   for (const loan of loans) {
     const row = {
-      user_id: req.user.id,
       name: loan.name,
       principal: parseInt(String(loan.principal || 0).replace(/,/g, '')) || 0,
       interest_rate: parseFloat(loan.interest_rate) || 0,
     };
     if (loan.id)
-      await supabase.from('loans').update(row).eq('id', loan.id).eq('user_id', req.user.id);
+      await supabase.from('loans').update(row).eq('id', loan.id);
     else
       await supabase.from('loans').insert([row]);
   }
 
   const { data, error } = await supabase
-    .from('loans').select('*').eq('user_id', req.user.id).order('created_at');
+    .from('loans').select('*').order('created_at');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
@@ -793,12 +703,11 @@ app.put('/api/loans', requireAuth, async (req, res) => {
 // =============================================
 // 주간리포트
 // =============================================
-app.get('/api/weekly-report', requireAuth, async (req, res) => {
+app.get('/api/weekly-report', requireAppToken, async (req, res) => {
   const { week_start } = req.query;
   if (!week_start || !/^\d{4}-\d{2}-\d{2}$/.test(week_start))
     return res.status(400).json({ error: 'week_start(YYYY-MM-DD) 필요' });
 
-  // 주간 날짜 범위 (월~일)
   const monDate = new Date(week_start + 'T00:00:00');
   const sunDate = new Date(monDate);
   sunDate.setDate(monDate.getDate() + 6);
@@ -808,7 +717,6 @@ app.get('/api/weekly-report', requireAuth, async (req, res) => {
 
   const { data: txs, error } = await supabase
     .from('transactions').select('*')
-    .eq('user_id', req.user.id)
     .gte('date', week_start).lte('date', week_end)
     .order('date').order('created_at');
   if (error) return res.status(500).json({ error: error.message });
@@ -826,7 +734,6 @@ app.get('/api/weekly-report', requireAuth, async (req, res) => {
     days.push({ date: ds, transactions: dayTxs, income, expense });
   }
 
-  // 카테고리별 합산 (저축/투자 제외)
   const catMap = {};
   (txs || []).forEach(t => {
     if (t.type !== 'expense' || EXCLUDED.includes(t.category)) return;
@@ -839,9 +746,7 @@ app.get('/api/weekly-report', requireAuth, async (req, res) => {
   const totalExpense = categories.reduce((s, c) => s + c.amount, 0);
   const totalIncome = (txs || []).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
 
-  const reportData = { week_start, week_end, days, categories, totalExpense, totalIncome };
-
-  res.json(reportData);
+  res.json({ week_start, week_end, days, categories, totalExpense, totalIncome });
 });
 
 app.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
