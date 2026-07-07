@@ -7,7 +7,7 @@ const ws = require('ws');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const APP_PASSWORD = process.env.APP_PASSWORD;
+const APP_PASSWORD = process.env.BUDGET_SECRET || process.env.APP_PASSWORD;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ 환경변수 누락: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 필요');
