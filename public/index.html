@@ -1361,7 +1361,7 @@ async function fetchWithTimeout(input, init, ms = 10000) {
 
 async function api(method, path, body, _retry = true, _attempt = 1) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
-  const appToken = sessionStorage.getItem('app_token');
+  const appToken = localStorage.getItem('app_token');
   if (appToken) opts.headers['Authorization'] = `Bearer ${appToken}`;
   if (body) opts.body = JSON.stringify(body);
   console.log(`[API] ${method} ${path} (attempt ${_attempt})`);
@@ -1424,13 +1424,13 @@ async function doLogin() {
     }, 15000);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return showAuthError(data.error || '비밀번호가 올바르지 않아요.');
-    sessionStorage.setItem('app_token', data.token);
+    localStorage.setItem('app_token', data.token);
     enterApp();
   } catch (e) { showAuthError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'); }
 }
 
 function doLogout() {
-  sessionStorage.removeItem('app_token');
+  localStorage.removeItem('app_token');
   document.getElementById('main-screen').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
 }
@@ -2352,7 +2352,7 @@ async function loadMonth() {
   } catch (e) {
     console.error('[loadMonth] 실패:', e.message);
     // 인증 오류가 아닌 경우 (doLogout이 아닌 단순 네트워크/서버 오류)
-    if (sessionStorage.getItem('app_token')) showToast('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    if (localStorage.getItem('app_token')) showToast('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
   }
 }
 
@@ -3734,7 +3734,7 @@ function wRoundRect(ctx, x, y, w, h, r) {
 // =============================================
 async function exportCSV() {
   try {
-    const res = await fetch('/api/transactions/export', { headers: { Authorization: `Bearer ${sessionStorage.getItem('app_token')}` } });
+    const res = await fetch('/api/transactions/export', { headers: { Authorization: `Bearer ${localStorage.getItem('app_token')}` } });
     if (!res.ok) throw new Error('내보내기 실패');
     const blob = await res.blob();
     const today = new Date().toISOString().slice(0, 10);
@@ -3885,7 +3885,7 @@ if ('serviceWorker' in navigator) {
   setupSubTabSwipe(document.getElementById('tab-ledger'));
   document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
-  if (sessionStorage.getItem('app_token')) {
+  if (localStorage.getItem('app_token')) {
     console.log('[INIT] 저장된 세션 확인 → 앱 진입');
     enterApp();
   } else {
