@@ -871,7 +871,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
         <span class="form-amount-unit">원</span>
       </div>
     </div>
-    <div class="form-row"><label>내용 <span style="color:#e57373">*</span></label><input type="text" id="form-content" placeholder="무엇에 썼나요?"></div>
+    <div class="form-row"><label>내용 <span style="color:#e57373">*</span></label><input type="text" id="form-content" placeholder="무엇에 썼나요?" lang="ko" inputmode="text"></div>
     <div class="form-row">
       <label>카테고리</label>
       <div class="cat-parent-list" id="cat-parent-list"></div>
@@ -925,7 +925,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
         <span>일마다 자동 생성</span>
       </div>
     </div>
-    <div class="form-row"><label>항목명 <span style="color:#e57373">*</span></label><input type="text" id="fixed-name" placeholder="예) 넷플릭스, 월세"></div>
+    <div class="form-row"><label>항목명 <span style="color:#e57373">*</span></label><input type="text" id="fixed-name" placeholder="예) 넷플릭스, 월세" lang="ko" inputmode="text"></div>
     <div class="form-row">
       <label>금액</label>
       <div class="form-amount-wrap">
@@ -1025,7 +1025,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
   <div class="add-asset-box" onclick="event.stopPropagation()">
     <div class="add-asset-box-title">항목 추가</div>
     <div class="add-asset-type-btns" id="add-asset-type-btns"></div>
-    <div class="form-row"><label>항목명 <span style="color:#e57373">*</span></label><input type="text" id="new-asset-name" placeholder="예) 국민은행 적금, 삼성전자"></div>
+    <div class="form-row"><label>항목명 <span style="color:#e57373">*</span></label><input type="text" id="new-asset-name" placeholder="예) 국민은행 적금, 삼성전자" lang="ko" inputmode="text"></div>
     <div class="form-row">
       <label>금액</label>
       <div class="form-amount-wrap">
@@ -1093,7 +1093,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
     <div class="search-top-row">
       <button class="panel-back" onclick="closeSearch()">←</button>
       <div class="search-input-wrap">
-        <input class="search-input" id="search-q" type="text" placeholder="내용 검색..." oninput="onSearchInput()">
+        <input class="search-input" id="search-q" type="text" placeholder="내용 검색..." oninput="onSearchInput()" lang="ko" inputmode="text">
         <button class="search-clear-btn" id="search-clear" onclick="clearSearch()">✕</button>
       </div>
     </div>
@@ -1926,7 +1926,7 @@ function renderLoanEditForm() {
     row.className = 'loan-edit-row';
     row.innerHTML = `
       <div class="loan-edit-fields">
-        <input type="text" placeholder="대출명" value="${escHtml(loan.name)}"
+        <input type="text" placeholder="대출명" value="${escHtml(loan.name)}" lang="ko" inputmode="text"
           oninput="loanEditState.items[${i}].name=this.value">
         <div style="position:relative">
           <input type="text" placeholder="잔여 원금" value="${loan.principal > 0 ? fmtInput(loan.principal) : ''}"
