@@ -133,10 +133,33 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .month-nav { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 14px; }
 .month-nav-btn { width: 32px; height: 32px; border-radius: 10px; background: var(--surface2); color: var(--text2); font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .month-label { font-size: 18px; font-weight: 700; }
-.month-summary { display: flex; gap: 8px; margin-bottom: 0; }
-.summary-card { flex: 1; background: var(--surface2); border-radius: 12px; padding: 10px 12px; text-align: center; }
+.month-summary { margin-bottom: 0; }
+.summary-card {
+  background: var(--surface2); border-radius: 12px; padding: 12px 14px;
+}
+.summary-card-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.summary-col { display: flex; flex-direction: column; }
+.summary-col:last-child { align-items: flex-end; }
 .summary-card .s-label { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
 .summary-card .s-value { font-size: 14px; font-weight: 700; }
+.expense-bar-wrap { margin-bottom: 8px; }
+.expense-bar-track {
+  width: 100%; height: 9px; border-radius: 9px;
+  background: var(--border); overflow: hidden;
+}
+.expense-bar-inner { display: flex; height: 100%; width: 100%; }
+.expense-bar-fixed {
+  background: #C9B8E8; height: 100%;
+  transition: width .4s ease;
+}
+.expense-bar-normal {
+  background: #FFB5A7; height: 100%;
+  transition: width .4s ease;
+}
+.expense-bar-empty { font-size: 11px; color: var(--text3); padding: 2px 0; }
+.expense-bar-legend { display: flex; gap: 14px; }
+.expense-bar-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
+.expense-bar-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .s-income { color: var(--income-color); }
 .s-expense { color: var(--expense-color); }
 .s-balance { color: var(--primary-dark); }
@@ -662,8 +685,36 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
             <button class="month-nav-btn" onclick="changeMonth(1)">→</button>
           </div>
           <div class="month-summary">
-            <div class="summary-card"><div class="s-label">수입</div><div class="s-value s-income" id="sum-income">₩0</div></div>
-            <div class="summary-card"><div class="s-label">지출</div><div class="s-value s-expense" id="sum-expense">₩0</div></div>
+            <div class="summary-card">
+              <div class="summary-card-top">
+                <div class="summary-col">
+                  <div class="s-label">수입</div>
+                  <div class="s-value s-income" id="sum-income">₩0</div>
+                </div>
+                <div class="summary-col">
+                  <div class="s-label">지출</div>
+                  <div class="s-value s-expense" id="sum-expense">₩0</div>
+                </div>
+              </div>
+              <div class="expense-bar-wrap" id="expense-bar-wrap">
+                <div class="expense-bar-track">
+                  <div class="expense-bar-inner">
+                    <div class="expense-bar-fixed" id="expense-bar-fixed" style="width:0%"></div>
+                    <div class="expense-bar-normal" id="expense-bar-normal" style="width:0%"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="expense-bar-legend" id="expense-bar-legend">
+                <div class="expense-bar-legend-item">
+                  <div class="expense-bar-legend-dot" style="background:#C9B8E8"></div>
+                  <span>고정 <span id="sum-fixed">₩0</span></span>
+                </div>
+                <div class="expense-bar-legend-item">
+                  <div class="expense-bar-legend-dot" style="background:#FFB5A7"></div>
+                  <span>일반 <span id="sum-normal">₩0</span></span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="cal-weekdays">
@@ -2436,13 +2487,36 @@ function makeCell(day, other, isToday = false, amounts = null) {
 }
 
 function renderSummary() {
-  let income = 0, expense = 0;
+  let income = 0, fixedExp = 0, normalExp = 0;
   state.transactions.forEach(t => {
-    if (t.type === 'income') income += t.amount;
-    else if (!isExcluded(t.category)) expense += t.amount;
+    if (t.type === 'income') { income += t.amount; return; }
+    if (isExcluded(t.category)) return;
+    if (t.is_fixed) fixedExp += t.amount;
+    else normalExp += t.amount;
   });
+  const expense = fixedExp + normalExp;
   document.getElementById('sum-income').textContent = fmt(income);
   document.getElementById('sum-expense').textContent = fmt(expense);
+  document.getElementById('sum-fixed').textContent = fmt(fixedExp);
+  document.getElementById('sum-normal').textContent = fmt(normalExp);
+
+  const barWrap = document.getElementById('expense-bar-wrap');
+  const legend = document.getElementById('expense-bar-legend');
+  if (expense === 0) {
+    barWrap.innerHTML = '<div class="expense-bar-empty">지출 내역이 없어요</div>';
+    legend.style.display = 'none';
+  } else {
+    const fixedPct = Math.round(fixedExp / expense * 100);
+    const normalPct = 100 - fixedPct;
+    barWrap.innerHTML = `
+      <div class="expense-bar-track">
+        <div class="expense-bar-inner">
+          <div class="expense-bar-fixed" style="width:${fixedPct}%"></div>
+          <div class="expense-bar-normal" style="width:${normalPct}%"></div>
+        </div>
+      </div>`;
+    legend.style.display = '';
+  }
 }
 
 function renderCardSummary() {
