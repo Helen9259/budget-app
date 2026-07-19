@@ -2335,7 +2335,7 @@ function renderCatRank(cats, total) {
     div.className = 'cat-rank-item';
     div.innerHTML = `
       <div class="cat-rank-header" onclick="toggleCatAccordion(this)">
-        <span class="cat-rank-pct">${cat.pct}%</span>
+        <span class="cat-rank-pct">${total > 0 ? Math.round(cat.total / total * 100) : 0}%</span>
         <span class="cat-rank-name"><span class="cat-color-dot" style="background:${color}"></span>${escHtml(cat.name)}</span>
         <div class="cat-rank-bar-wrap"><div class="cat-rank-bar-track"><div class="cat-rank-bar-fill" style="width:${barW}%;background:${color}"></div></div></div>
         <span class="cat-rank-amount">${fmt(cat.total)}</span>
