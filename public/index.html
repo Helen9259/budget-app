@@ -251,7 +251,8 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .type-btn { flex: 1; padding: 9px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--text3); background: transparent; transition: all .2s; }
 .type-btn.active-income { background: var(--income-color); color: #fff; }
 .type-btn.active-expense { background: var(--expense-color); color: #fff; }
-.form-row { margin-bottom: 14px; }
+.form-row { margin-bottom: 14px; overflow: hidden; }
+input[type="date"] { max-width: 100%; }
 .form-amount-wrap { position: relative; }
 .form-amount-wrap input { padding-right: 24px; font-size: 18px; font-weight: 700; }
 .form-amount-unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text2); font-weight: 600; }
@@ -590,6 +591,9 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .stats-type-btn { flex: 1; padding: 8px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--text3); background: transparent; transition: all .2s; }
 .stats-type-btn.active-expense { background: var(--expense-color); color: #fff; }
 .stats-type-btn.active-income { background: var(--income-color); color: #fff; }
+.stats-exclude-row { display: none; padding: 4px 16px 0; }
+.stats-exclude-row.visible { display: block; }
+.stats-exclude-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); cursor: pointer; }
 .stats-total { text-align: center; padding: 6px 16px 0; }
 .stats-total-label { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
 .stats-total-amt { font-size: 30px; font-weight: 700; }
@@ -1178,6 +1182,9 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
       <button class="stats-type-btn active-expense" id="stats-btn-expense" onclick="setStatsType('expense')">지출</button>
       <button class="stats-type-btn" id="stats-btn-income" onclick="setStatsType('income')">수입</button>
     </div>
+    <div class="stats-exclude-row" id="stats-exclude-row">
+      <label class="stats-exclude-label"><input type="checkbox" id="stats-exclude-fixed" onchange="loadStats()"> 고정지출 제외</label>
+    </div>
     <div class="stats-total">
       <div class="stats-total-label" id="stats-total-label">이번 달 지출</div>
       <div class="stats-total-amt expense" id="stats-total-amt">₩0</div>
@@ -1705,13 +1712,9 @@ function renderAssetDonut(items, total) {
         const y = arc.y + r * Math.sin(angle);
         ctx2.save();
         ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
-        // emoji above
-        ctx2.font = '13px sans-serif';
-        ctx2.fillText(ASSET_TYPES[i].emoji, x, y - 7);
-        // % below
-        ctx2.font = 'bold 10px sans-serif';
-        ctx2.fillStyle = '#fff';
-        ctx2.fillText(pct + '%', x, y + 7);
+        ctx2.font = 'bold 11px sans-serif';
+        ctx2.fillStyle = '#333';
+        ctx2.fillText(pct + '%', x, y);
         ctx2.restore();
       });
     }
@@ -2158,6 +2161,9 @@ function setStatsType(type) {
   statsState.type = type;
   document.getElementById('stats-btn-expense').className = 'stats-type-btn' + (type === 'expense' ? ' active-expense' : '');
   document.getElementById('stats-btn-income').className = 'stats-type-btn' + (type === 'income' ? ' active-income' : '');
+  const row = document.getElementById('stats-exclude-row');
+  if (type === 'expense') row.classList.add('visible');
+  else { row.classList.remove('visible'); document.getElementById('stats-exclude-fixed').checked = false; }
   loadStats();
 }
 
@@ -2171,10 +2177,28 @@ async function loadStats() {
 
 function renderStats(data) {
   const isExp = statsState.type === 'expense';
-  const label = isExp ? '이번 달 지출' : '이번 달 수입';
+  const excludeFixed = isExp && document.getElementById('stats-exclude-fixed')?.checked;
+
+  // 고정지출 제외 필터
+  let cats = data.categories || [];
+  let total = data.total;
+  if (excludeFixed) {
+    // 서버 데이터에 is_fixed 정보가 없으므로 현재 월 transactions에서 고정지출 카테고리별 합산 후 차감
+    const fixedByCategory = {};
+    state.transactions.filter(t => t.is_fixed && t.type === 'expense').forEach(t => {
+      fixedByCategory[t.category] = (fixedByCategory[t.category] || 0) + t.amount;
+    });
+    cats = cats.map(c => {
+      const fixed = fixedByCategory[c.name] || 0;
+      return { ...c, total: Math.max(0, c.total - fixed) };
+    }).filter(c => c.total > 0);
+    total = cats.reduce((s, c) => s + c.total, 0);
+  }
+
+  const label = isExp ? (excludeFixed ? '이번 달 지출 (고정 제외)' : '이번 달 지출') : '이번 달 수입';
   document.getElementById('stats-total-label').textContent = label;
   const amtEl = document.getElementById('stats-total-amt');
-  amtEl.textContent = fmt(data.total);
+  amtEl.textContent = fmt(total);
   amtEl.className = 'stats-total-amt ' + (isExp ? 'expense' : 'income');
 
   const prevEl = document.getElementById('stats-total-prev');
@@ -2187,8 +2211,8 @@ function renderStats(data) {
     prevEl.textContent = '';
   }
 
-  renderDonut(data.categories);
-  renderCatRank(data.categories, data.total);
+  renderDonut(cats);
+  renderCatRank(cats, total);
 }
 
 function polarToXY(cx, cy, r, angleDeg) {
