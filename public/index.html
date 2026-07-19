@@ -203,11 +203,11 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .cal-day.other-month .cal-day-num { color: var(--text3); }
 .cal-day.today .cal-day-num-inner { background: var(--primary); color: #fff; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .cal-day.selected { background: var(--primary-light); }
-.cal-day-num { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.cal-day-num { position: relative; text-align: center; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; height: 24px; display: flex; align-items: center; justify-content: center; }
 .cal-day:nth-child(7n+1) .cal-day-num { color: #e57373; }
 .cal-day:nth-child(7n) .cal-day-num { color: #5b9bd5; }
 .cal-day.today .cal-day-num, .cal-day.today:nth-child(7n+1) .cal-day-num, .cal-day.today:nth-child(7n) .cal-day-num { color: #fff; }
-.cal-fixed-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #b39ddb; margin-left: 2px; vertical-align: middle; flex-shrink: 0; }
+.cal-fixed-dot { position: absolute; left: calc(50% + 13px); top: 50%; transform: translateY(-50%); width: 5px; height: 5px; border-radius: 50%; background: #b39ddb; }
 .cal-amounts { display: flex; flex-direction: column; gap: 1px; align-items: flex-end; }
 .cal-income { font-size: 10px; font-weight: 600; color: var(--income-color); }
 .cal-expense { font-size: 10px; font-weight: 600; color: var(--expense-color); }
@@ -1603,9 +1603,9 @@ function showTab(tab) {
 // 자산관리 상태 & 상수
 // =============================================
 const ASSET_TYPES = [
-  { key: 'savings',    label: '예금·적금',       color: '#A8D8EA' },
-  { key: 'investment', label: '주식·ETF·코인',   color: '#B5EAD7' },
-  { key: 'cash',       label: '현금·예수금',      color: '#FFDAC1' },
+  { key: 'savings',    label: '예금·적금',       color: '#A8D8EA', emoji: '🏦' },
+  { key: 'investment', label: '주식·ETF·코인',   color: '#B5EAD7', emoji: '📈' },
+  { key: 'cash',       label: '현금·예수금',      color: '#FFDAC1', emoji: '💵' },
 ];
 
 const assetState = {
@@ -1688,6 +1688,35 @@ function renderAssetDonut(items, total) {
 
   if (_assetDonutChart) { _assetDonutChart.destroy(); _assetDonutChart = null; }
 
+  const donutLabelPlugin = {
+    id: 'donutLabels',
+    afterDraw(chart) {
+      if (!hasAny) return;
+      const ctx2 = chart.ctx;
+      const meta = chart.getDatasetMeta(0);
+      const dataArr = ASSET_TYPES.map(t => byType[t.key] || 0);
+      meta.data.forEach((arc, i) => {
+        const amt = dataArr[i];
+        if (!amt) return;
+        const pct = Math.round(amt / total * 100);
+        const angle = (arc.startAngle + arc.endAngle) / 2;
+        const r = (arc.innerRadius + arc.outerRadius) / 2;
+        const x = arc.x + r * Math.cos(angle);
+        const y = arc.y + r * Math.sin(angle);
+        ctx2.save();
+        ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+        // emoji above
+        ctx2.font = '13px sans-serif';
+        ctx2.fillText(ASSET_TYPES[i].emoji, x, y - 7);
+        // % below
+        ctx2.font = 'bold 10px sans-serif';
+        ctx2.fillStyle = '#fff';
+        ctx2.fillText(pct + '%', x, y + 7);
+        ctx2.restore();
+      });
+    }
+  };
+
   _assetDonutChart = new Chart(canvas.getContext('2d'), {
     type: 'doughnut',
     data: {
@@ -1701,13 +1730,14 @@ function renderAssetDonut(items, total) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: '68%',
-      animation: { duration: 300 },
+      cutout: '62%',
+      animation: { duration: 0 },
       plugins: {
         legend: { display: false },
         tooltip: { enabled: hasAny },
       },
     },
+    plugins: hasAny ? [donutLabelPlugin] : [],
   });
 
   center.innerHTML = `<div class="asset-comp-center-label">총 자산</div><div class="asset-comp-center-val">${fmt(total)}</div>`;
@@ -1776,7 +1806,10 @@ function renderAssetHistoryChart() {
   }
 
   const maxVal = Math.max(...history.filter(m => m.total !== null).map(m => m.total), 1);
-  const yMax = maxVal * 1.25;
+  // y축 기준선: n000만 단위로 올림
+  const UNIT = 10000000; // 1000만
+  const step = Math.ceil(maxVal / 4 / UNIT) * UNIT || UNIT;
+  const yMax = step * 4;
   const yScale = cH / yMax;
   const n = history.length;
   const slotW = cW / n;
@@ -1785,16 +1818,14 @@ function renderAssetHistoryChart() {
   // Grid
   ctx.strokeStyle = '#e8e0f0'; ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
-    const y = PAD.top + cH - (cH / 4 * i);
+    const val = step * i;
+    const y = PAD.top + cH - val * yScale;
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(W - PAD.right, y); ctx.stroke();
-    const val = yMax / 4 * i;
     const lbl = val >= 100000000 ? (val / 100000000).toFixed(1).replace(/\.0$/, '') + '억'
-              : val >= 10000 ? Math.floor(val / 10000) + '만' : '';
-    if (lbl) {
-      ctx.fillStyle = '#b0a8c8'; ctx.font = '9px sans-serif';
-      ctx.textAlign = 'right'; ctx.fillText(lbl, PAD.left - 3, y + 3);
-      ctx.textAlign = 'left';  ctx.fillText(lbl, W - PAD.right + 3, y + 3);
-    }
+              : val >= 10000 ? Math.floor(val / 10000) + '만' : '0';
+    ctx.fillStyle = '#b0a8c8'; ctx.font = '9px sans-serif';
+    ctx.textAlign = 'right'; ctx.fillText(lbl, PAD.left - 3, y + 3);
+    ctx.textAlign = 'left';  ctx.fillText(lbl, W - PAD.right + 3, y + 3);
   }
 
   // Stacked bars
@@ -2584,7 +2615,7 @@ function makeCell(day, other, isToday = false, amounts = null) {
   numWrap.textContent = day;
   num.appendChild(numWrap);
   if (!other && amounts && amounts.hasFixed) {
-    const dot = document.createElement('span');
+    const dot = document.createElement('div');
     dot.className = 'cal-fixed-dot';
     num.appendChild(dot);
   }
@@ -3027,64 +3058,7 @@ async function saveFixedExpense() {
 
 function renderFixedSummary() {
   const sec = document.getElementById('fixed-summary-section');
-  const nowYM = (function() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
-  const active = state.fixedExpenses.filter(fe => !fe.end_month || fe.end_month >= nowYM);
-  if (active.length === 0) { sec.style.display = 'none'; return; }
-  sec.style.display = '';
-
-  const total = active.reduce((s, fe) => s + fe.amount, 0);
-  document.getElementById('fixed-summary-amt').textContent = '월 ' + fmt(total);
-  document.getElementById('fixed-summary-count').textContent = active.length + '건';
-
-  // Group by category
-  const catMap = {};
-  active.forEach(fe => {
-    catMap[fe.category] = (catMap[fe.category] || 0) + fe.amount;
-  });
-  const cats = Object.entries(catMap).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
-
-  // Draw donut
-  const svg = document.getElementById('fixed-donut-svg');
-  svg.innerHTML = '';
-  const cx = 50, cy = 50, outerR = 42, innerR = 26, GAP = 3;
-  let startDeg = 0;
-  cats.forEach(cat => {
-    const sweep = (cat.total / total) * (360 - GAP * cats.length);
-    const endDeg = startDeg + sweep;
-    const o1 = polarToXY(cx, cy, outerR, startDeg + GAP / 2);
-    const o2 = polarToXY(cx, cy, outerR, endDeg - GAP / 2);
-    const i1 = polarToXY(cx, cy, innerR, endDeg - GAP / 2);
-    const i2 = polarToXY(cx, cy, innerR, startDeg + GAP / 2);
-    const large = sweep > 180 ? 1 : 0;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${o1.x.toFixed(2)} ${o1.y.toFixed(2)} A ${outerR} ${outerR} 0 ${large} 1 ${o2.x.toFixed(2)} ${o2.y.toFixed(2)} L ${i1.x.toFixed(2)} ${i1.y.toFixed(2)} A ${innerR} ${innerR} 0 ${large} 0 ${i2.x.toFixed(2)} ${i2.y.toFixed(2)} Z`);
-    path.setAttribute('fill', getCatColor(cat.name));
-    svg.appendChild(path);
-    if (sweep >= 30) {
-      const midDeg = (startDeg + endDeg) / 2;
-      const midPt = polarToXY(cx, cy, (outerR + innerR) / 2, midDeg);
-      const pct = Math.round(cat.total / total * 100);
-      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      txt.setAttribute('x', midPt.x.toFixed(2)); txt.setAttribute('y', midPt.y.toFixed(2));
-      txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'middle');
-      txt.setAttribute('font-size', '9'); txt.setAttribute('font-weight', '700');
-      txt.setAttribute('fill', '#fff'); txt.textContent = pct + '%';
-      svg.appendChild(txt);
-    }
-    startDeg = endDeg + GAP;
-  });
-  document.getElementById('fixed-donut-n').textContent = active.length;
-
-  // Legend
-  const legend = document.getElementById('fixed-legend');
-  legend.innerHTML = '';
-  cats.forEach(cat => {
-    const pct = Math.round(cat.total / total * 100);
-    const item = document.createElement('div');
-    item.className = 'fixed-legend-item';
-    item.innerHTML = `<div class="fixed-legend-dot" style="background:${getCatColor(cat.name)}"></div><div class="fixed-legend-name">${escHtml(cat.name)}</div><div class="fixed-legend-pct">${pct}%</div><div class="fixed-legend-amt">${fmt(cat.total)}</div>`;
-    legend.appendChild(item);
-  });
+  if (sec) sec.style.display = 'none';
 }
 
 function renderFixedList() {
@@ -3096,7 +3070,8 @@ function renderFixedList() {
     return;
   }
   const nowYM = (function() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
-  state.fixedExpenses.forEach(fe => {
+  const sorted = [...state.fixedExpenses].sort((a, b) => a.day_of_month - b.day_of_month);
+  sorted.forEach(fe => {
     const ended = fe.end_month && fe.end_month < nowYM;
     const div = document.createElement('div');
     div.className = 'fixed-item' + (ended ? ' fixed-item-ended' : '');
