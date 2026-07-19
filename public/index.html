@@ -207,7 +207,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .cal-day:nth-child(7n+1) .cal-day-num { color: #e57373; }
 .cal-day:nth-child(7n) .cal-day-num { color: #5b9bd5; }
 .cal-day.today .cal-day-num, .cal-day.today:nth-child(7n+1) .cal-day-num, .cal-day.today:nth-child(7n) .cal-day-num { color: #fff; }
-.cal-fixed-dot { width: 5px; height: 5px; border-radius: 50%; background: #b39ddb; margin: 1px auto 0; }
+.cal-fixed-dot { width: 5px; height: 5px; border-radius: 50%; background: #b39ddb; margin: 0 auto 2px; }
 .cal-amounts { display: flex; flex-direction: column; gap: 1px; align-items: flex-end; }
 .cal-income { font-size: 10px; font-weight: 600; color: var(--income-color); }
 .cal-expense { font-size: 10px; font-weight: 600; color: var(--expense-color); }
@@ -2577,15 +2577,15 @@ function renderCalendar() {
 function makeCell(day, other, isToday = false, amounts = null) {
   const div = document.createElement('div');
   div.className = 'cal-day' + (other ? ' other-month' : '') + (isToday ? ' today' : '');
-  const num = document.createElement('div');
-  num.className = 'cal-day-num';
-  num.textContent = day;
-  div.appendChild(num);
   if (!other && amounts && amounts.hasFixed) {
     const dot = document.createElement('div');
     dot.className = 'cal-fixed-dot';
     div.appendChild(dot);
   }
+  const num = document.createElement('div');
+  num.className = 'cal-day-num';
+  num.textContent = day;
+  div.appendChild(num);
   if (amounts && !other) {
     const amts = document.createElement('div');
     amts.className = 'cal-amounts';
