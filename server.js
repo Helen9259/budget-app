@@ -310,11 +310,13 @@ app.get('/api/credit-cards/usage', requireAppToken, async (req, res) => {
 
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
+  const y = parseInt(req.query.year) || now.getFullYear();
+  const m = parseInt(req.query.month) || now.getMonth() + 1;
   const results = [];
 
   for (const card of cards) {
-    const start = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const start = `${y}-${pad(m)}-01`;
+    const end = new Date(y, m, 0).toISOString().split('T')[0];
 
     const { data: txs } = await supabase
       .from('transactions').select('amount')
