@@ -592,8 +592,9 @@ input[type="date"] { max-width: 100%; }
 .stats-type-btn.active-expense { background: var(--expense-color); color: #fff; }
 .stats-type-btn.active-income { background: var(--income-color); color: #fff; }
 .stats-exclude-row { display: none; padding: 4px 16px 0; }
-.stats-exclude-row.visible { display: block; }
-.stats-exclude-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); cursor: pointer; }
+.stats-exclude-row.visible { display: flex; justify-content: flex-end; }
+.stats-exclude-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); cursor: pointer; font-weight: 500; margin-bottom: 0; }
+.stats-exclude-label input[type="checkbox"] { width: auto; margin: 0; }
 .stats-total { text-align: center; padding: 6px 16px 0; }
 .stats-total-label { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
 .stats-total-amt { font-size: 30px; font-weight: 700; }
