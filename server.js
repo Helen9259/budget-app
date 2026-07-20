@@ -586,10 +586,17 @@ app.put('/api/assets/snapshot', requireAppToken, async (req, res) => {
   if (!year_month || !Array.isArray(items))
     return res.status(400).json({ error: 'year_month, items 필요' });
 
-  await supabase.from('asset_snapshots')
-    .delete().eq('year_month', year_month);
+  if (items.length === 0) {
+    const { error } = await supabase.from('asset_snapshots')
+      .delete().eq('year_month', year_month);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({ saved: 0 });
+  }
 
-  if (items.length === 0) return res.json({ saved: 0 });
+  // 기존 행 id 확보 → 새 행 삽입 성공 후에만 기존 행 삭제 (삽입 실패 시 데이터 보존)
+  const { data: oldRows, error: selErr } = await supabase
+    .from('asset_snapshots').select('id').eq('year_month', year_month);
+  if (selErr) return res.status(500).json({ error: selErr.message });
 
   const rows = items.map(item => ({
     year_month,
@@ -599,8 +606,14 @@ app.put('/api/assets/snapshot', requireAppToken, async (req, res) => {
     quantity: item.quantity != null ? parseFloat(item.quantity) : null,
     return_rate: item.return_rate != null ? parseFloat(item.return_rate) : null,
   }));
-  const { error } = await supabase.from('asset_snapshots').insert(rows);
-  if (error) return res.status(500).json({ error: error.message });
+  const { error: insErr } = await supabase.from('asset_snapshots').insert(rows);
+  if (insErr) return res.status(500).json({ error: insErr.message });
+
+  if (oldRows && oldRows.length > 0) {
+    const { error: delErr } = await supabase.from('asset_snapshots')
+      .delete().in('id', oldRows.map(r => r.id));
+    if (delErr) return res.status(500).json({ error: delErr.message });
+  }
   res.json({ saved: rows.length });
 });
 
