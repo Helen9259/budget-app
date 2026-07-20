@@ -252,7 +252,18 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .type-btn.active-income { background: var(--income-color); color: #fff; }
 .type-btn.active-expense { background: var(--expense-color); color: #fff; }
 .form-row { margin-bottom: 14px; }
-input[type="date"] { width: 100%; max-width: 100%; text-align: center; }
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+/* iOS: date 입력 내부 컨트롤 정렬 */
+input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0; }
 .form-amount-wrap { position: relative; }
 .form-amount-wrap input { padding-right: 24px; font-size: 18px; font-weight: 700; }
 .form-amount-unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text2); font-weight: 600; }
