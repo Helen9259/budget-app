@@ -80,6 +80,22 @@ Railway 대시보드 → 프로젝트 → **Variables** 탭에서 아래 추가:
 
 ---
 
+## 3-4. 투자 일지 (Investment Journal)
+
+같은 서버·Supabase 프로젝트를 공유하는 별도 PWA입니다. 가계부와 동일한 비밀번호로 로그인합니다.
+
+- **접속 경로**: `/investment/` (예: `https://<배포주소>/investment/`)
+- **DB 스키마 적용**: Supabase SQL Editor에서 `supabase/schema_investment.sql` 실행
+  (가계부와 같은 프로젝트에 `inv_accounts` / `inv_holdings` / `inv_trades` 테이블만 추가)
+- **주요 기능**
+  - 홈: 계좌별 적립식(DCA) 매수 확인 캐러셀, 전체 누적 투자 도넛 + 계좌군 드릴다운
+  - 특이사항(상시) 기록 모달: 유형·종목·수량·단가·매매 이유(필수)·감정(필수)
+  - 타임라인: 캘린더(정기/상시/감정) · 리스트 토글, 이달의 인사이트
+- **PWA**: `/investment/manifest.json` + `/investment/sw.js` (scope `/investment/`, 가계부 SW와 분리)
+- 첫 진입 시 기본 계좌(ISA·연금저축·일반계좌)가 자동 생성됩니다.
+
+---
+
 ## 4. 기능 현황
 
 ### STEP 1 (현재)
