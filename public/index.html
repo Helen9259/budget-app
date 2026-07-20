@@ -3239,7 +3239,17 @@ async function saveFixedExpense() {
 
 function renderFixedSummary() {
   const sec = document.getElementById('fixed-summary-section');
-  if (sec) sec.style.display = 'none';
+  if (!sec) return;
+  const nowYM = (function() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
+  const active = state.fixedExpenses.filter(fe => !fe.end_month || fe.end_month >= nowYM);
+  if (active.length === 0) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const total = active.reduce((s, fe) => s + fe.amount, 0);
+  document.getElementById('fixed-summary-amt').textContent = '월 ' + fmt(total);
+  document.getElementById('fixed-summary-count').textContent = active.length + '건';
+  // 차트 영역 숨김 유지
+  const chart = sec.querySelector('.fixed-chart-wrap');
+  if (chart) chart.style.display = 'none';
 }
 
 function renderFixedList() {
