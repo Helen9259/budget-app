@@ -576,6 +576,10 @@ input[type="date"] { max-width: 100%; }
 /* 수익률 색상 */
 .rate-pos { color: #e57373; }
 .rate-neg { color: #5b9bd5; }
+/* 수익률 부호 토글 */
+.rate-input-wrap { display: flex; gap: 4px; align-items: stretch; }
+.rate-input-wrap input { flex: 1; min-width: 0; }
+.rate-sign-btn { width: 30px; flex-shrink: 0; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text2); font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 /* 투자 추가 모달 추가 필드 */
 .add-invest-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 /* 자산 도넛 범례 수익률 */
@@ -1177,7 +1181,10 @@ input[type="date"] { max-width: 100%; }
         </div>
         <div class="form-row" style="margin-bottom:0">
           <label>수익률 % (선택)</label>
-          <input type="text" id="new-asset-rate" placeholder="0.0" inputmode="decimal">
+          <div class="rate-input-wrap">
+            <button class="rate-sign-btn" id="new-asset-rate-sign" onclick="this.textContent=this.textContent==='−'?'＋':'−'">＋</button>
+            <input type="text" id="new-asset-rate" placeholder="0.0" inputmode="decimal">
+          </div>
         </div>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">항목명을 '기타'로 입력하면 수익률 계산에서 제외됩니다.</div>
@@ -2092,9 +2099,13 @@ function renderAssetInputForm() {
             </div>
             <div class="invest-field">
               <span class="invest-field-label">수익률 (선택)</span>
-              <input type="text" value="${item.return_rate ?? ''}" placeholder="${isEtc ? '-' : '0.0'}" inputmode="decimal"
-                ${isEtc ? 'disabled style="opacity:.4"' : ''}
-                oninput="assetInputState.items[${idx}].return_rate=this.value===''?null:parseFloat(this.value)||0">
+              <div class="rate-input-wrap">
+                <button class="rate-sign-btn" ${isEtc ? 'disabled style="opacity:.4"' : ''}
+                  onclick="toggleRateSign(this, ${idx})">${(item.return_rate ?? 0) < 0 ? '−' : '＋'}</button>
+                <input type="text" value="${item.return_rate != null ? Math.abs(item.return_rate) : ''}" placeholder="${isEtc ? '-' : '0.0'}" inputmode="decimal"
+                  ${isEtc ? 'disabled style="opacity:.4"' : ''}
+                  oninput="updateRateValue(this, ${idx})">
+              </div>
               <span class="invest-field-unit">%</span>
             </div>
           </div>`;
@@ -2103,6 +2114,20 @@ function renderAssetInputForm() {
     }
     container.appendChild(group);
   }
+}
+
+function toggleRateSign(btn, idx) {
+  const isNeg = btn.textContent === '−';
+  btn.textContent = isNeg ? '＋' : '−';
+  const item = assetInputState.items[idx];
+  if (item.return_rate != null) item.return_rate = -item.return_rate;
+}
+
+function updateRateValue(input, idx) {
+  const btn = input.parentElement.querySelector('.rate-sign-btn');
+  const sign = btn.textContent === '−' ? -1 : 1;
+  const v = input.value.trim();
+  assetInputState.items[idx].return_rate = v === '' ? null : sign * (Math.abs(parseFloat(v)) || 0);
 }
 
 function updateAssetGroupTotals() {
@@ -2155,6 +2180,7 @@ function openAddAssetItem() {
   document.getElementById('new-asset-amount').value = '';
   document.getElementById('new-asset-qty').value = '';
   document.getElementById('new-asset-rate').value = '';
+  document.getElementById('new-asset-rate-sign').textContent = '＋';
   document.getElementById('add-asset-box-title').textContent = isInvest ? '종목 추가' : '항목 추가';
   // 투자 탭: 타입 버튼 숨기고 투자 필드 표시
   document.getElementById('add-asset-type-btns').style.display = isInvest ? 'none' : '';
@@ -2202,10 +2228,11 @@ function confirmAddAssetItem() {
   const isEtc = name === '기타';
   const qtyVal = document.getElementById('new-asset-qty').value.trim();
   const rateVal = document.getElementById('new-asset-rate').value.trim();
+  const rateSign = document.getElementById('new-asset-rate-sign').textContent === '−' ? -1 : 1;
   const newItem = {
     type: _addAssetType, name, amount, isNew: true,
     quantity: (isInvest && !isEtc && qtyVal !== '') ? parseFloat(qtyVal) : null,
-    return_rate: (isInvest && !isEtc && rateVal !== '') ? parseFloat(rateVal) : null,
+    return_rate: (isInvest && !isEtc && rateVal !== '') ? rateSign * (Math.abs(parseFloat(rateVal)) || 0) : null,
   };
   assetInputState.items.push(newItem);
   closeAddAssetItem();
