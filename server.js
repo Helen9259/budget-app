@@ -596,6 +596,8 @@ app.put('/api/assets/snapshot', requireAppToken, async (req, res) => {
     type: item.type,
     name: item.name,
     amount: parseInt(item.amount) || 0,
+    quantity: item.quantity != null ? parseFloat(item.quantity) : null,
+    return_rate: item.return_rate != null ? parseFloat(item.return_rate) : null,
   }));
   const { error } = await supabase.from('asset_snapshots').insert(rows);
   if (error) return res.status(500).json({ error: error.message });
