@@ -181,6 +181,35 @@
   #toast{ position:fixed; left:50%; bottom:calc(var(--tab-h) + 40px); transform:translateX(-50%) translateY(20px); background:#14161c; color:#fff;
     padding:11px 18px; border-radius:22px; font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s; z-index:500; white-space:nowrap; }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* =========================================================
+     PC / 태블릿: 폰 너비 카드로 가운데 정렬 (모바일은 영향 없음)
+     ========================================================= */
+  @media (min-width: 700px){
+    body{ background:#e6e4de; }
+    /* 스플래시·로그인도 같은 폭의 카드로 */
+    #splash, #auth{ width:440px; max-width:calc(100% - 40px); height:min(880px, 94vh);
+      margin:auto; inset:0; border-radius:30px; box-shadow:0 24px 60px -18px rgba(0,0,0,0.32); overflow:hidden; }
+    #app.on{
+      width:440px; max-width:calc(100% - 40px);
+      height:min(880px, 94vh); margin:3vh auto;
+      position:relative; border-radius:30px; overflow:hidden;
+      box-shadow:0 24px 60px -18px rgba(0,0,0,0.32); background:var(--paper);
+    }
+    .screen{ padding-top:24px; }
+    /* 뷰포트 고정 요소들을 폰 프레임(#app) 기준으로 재배치 */
+    .tabbar{ position:absolute; }
+    .fab{ position:absolute; bottom:calc(var(--tab-h) + 20px); }
+    #toast{ bottom:calc(3vh + var(--tab-h) + 24px); }
+    /* 오버레이/바텀시트를 폰 프레임 크기·위치에 맞춤 */
+    .sheet-overlay{ left:50%; right:auto; top:3vh; bottom:auto; transform:translateX(-50%);
+      width:440px; max-width:calc(100% - 40px); height:min(880px, 94vh);
+      border-radius:30px; overflow:hidden; }
+    /* 커서 인터랙션 */
+    .chip, .mood-chip, .tab, .mini-btn, .add-card, .legend-row, .view-toggle button,
+    .month-nav button, .save-btn, .total-edit, .sheet-close, .del-x, .switch, .fab, .btn-full{ cursor:pointer; }
+    .dca-card{ flex-basis:280px; }
+  }
 </style>
 </head>
 <body>

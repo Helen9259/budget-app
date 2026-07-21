@@ -1,6 +1,6 @@
 // 투자 일지 PWA 서비스워커 (scope: /investment/)
 // 가계부 서비스워커(scope: /)와 캐시 이름·범위를 분리해 공존합니다.
-const CACHE = 'invest-v2';
+const CACHE = 'invest-v3';
 const ASSETS = ['/investment/', '/investment/index.html', '/investment/manifest.json'];
 
 self.addEventListener('install', e => {
