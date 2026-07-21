@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2b3a8f">
+<title>투자 일지</title>
+<link rel="manifest" href="/investment/manifest.json">
+<link rel="icon" type="image/png" sizes="96x96" href="/icon-96.png">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14161c; --sub:#6b7280; --line:#e7e5ea; --paper:#faf9f7; --card:#ffffff;
+    --accent:#2b3a8f; --accent-dark:#212d6e; --amber:#9a5b12; --amber-soft:#f6e9d8; --focus:#f2f0ec;
+    --tab-h:70px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:14px; line-height:1.5;
+  }
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+  input,select,textarea{font-family:inherit; outline:none; width:100%;}
+  ::-webkit-scrollbar{display:none;} *{scrollbar-width:none;}
+
+  /* 스플래시 / 로그인 */
+  #splash{ position:fixed; inset:0; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#e7ebfb 0%,#faf9f7 60%,#f6e9d8 100%); }
+  #splash .logo{ font-size:46px; margin-bottom:14px; }
+  #splash .spin{ width:34px; height:34px; border-radius:50%; border:3px solid #cfd6f2; border-top-color:var(--accent); animation:sp .8s linear infinite; }
+  @keyframes sp{ to{ transform:rotate(360deg); } }
+
+  #auth{ display:none; flex-direction:column; align-items:center; justify-content:center; height:100vh; padding:24px;
+    background:linear-gradient(160deg,#e7ebfb 0%,#faf9f7 60%,#f6e9d8 100%); }
+  #auth .logo{ font-size:46px; margin-bottom:6px; }
+  #auth .title{ font-size:23px; font-weight:700; color:var(--accent); }
+  #auth .sub{ font-size:13px; color:var(--sub); margin:4px 0 30px; }
+  .auth-card{ background:#fff; border-radius:22px; padding:26px 22px; width:100%; max-width:340px; box-shadow:0 12px 34px rgba(43,58,143,0.16); }
+  .auth-card input{ background:var(--focus); border:1.5px solid transparent; border-radius:11px; padding:13px; font-size:15px; margin-bottom:12px; }
+  .auth-card input:focus{ border-color:var(--accent); }
+  .btn-full{ background:var(--accent); color:#fff; border-radius:12px; padding:14px; font-weight:700; font-size:15px; width:100%; }
+  .auth-err{ background:#fdecec; color:#c0392b; border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:12px; display:none; }
+
+  /* 앱 레이아웃 */
+  #app{ display:none; flex-direction:column; height:100vh; }
+  #app.on{ display:flex; }
+  .screen{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:calc(env(safe-area-inset-top) + 20px) 0 calc(var(--tab-h) + 26px); display:flex; flex-direction:column; gap:14px; }
+  .screen.hidden{ display:none; }
+  .pad{ padding:0 20px; }
+  .eyebrow{ font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--sub); font-weight:600; }
+  h1{ margin:2px 0 0; font-size:21px; font-weight:700; }
+  .lead{ margin:2px 0 0; font-size:13px; color:var(--sub); }
+  .section-title{ font-size:13px; font-weight:700; padding:0 20px; display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .section-sub{ font-size:11px; color:var(--sub); font-weight:500; }
+
+  /* 캐러셀 */
+  .carousel-wrap{ position:relative; }
+  .carousel-track{ display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 20px; }
+  .dca-card{ scroll-snap-align:center; flex:0 0 84%; max-width:280px; min-height:170px;
+    background:linear-gradient(155deg,var(--accent) 0%,var(--accent-dark) 100%); border-radius:18px; padding:15px; color:#fff;
+    display:flex; flex-direction:column; gap:10px; }
+  .acct-tag{ display:inline-flex; align-self:flex-start; font-size:10.5px; font-weight:700; background:rgba(255,255,255,0.18); padding:3px 9px; border-radius:20px; color:#e4e8fb; }
+  .dca-title{ font-size:15px; font-weight:700; }
+  .field-row{ display:flex; gap:8px; }
+  .dca-card .field{ flex:1; display:flex; flex-direction:column; gap:5px; }
+  .dca-card .field label{ font-size:10.5px; color:#c3caf2; font-weight:600; }
+  .dca-card .box{ background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.22); border-radius:8px; padding:9px; font-size:13px; color:#fff; }
+  .dca-card .box .unit{ font-size:10.5px; color:#c3caf2; margin-left:3px; }
+  .mini-btn{ background:#fff; color:var(--accent); text-align:center; padding:10px; border-radius:9px; font-weight:700; font-size:13px; margin-top:auto; }
+  .mini-btn.done{ background:rgba(255,255,255,0.2); color:#e4e8fb; }
+  .add-card{ scroll-snap-align:center; flex:0 0 120px; min-height:170px; border:1.5px dashed #b7b4ab; border-radius:18px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--sub); font-size:12px; font-weight:600; text-align:center; }
+  .add-card .plus{ font-size:24px; line-height:1; }
+  .dots{ display:flex; justify-content:center; gap:6px; min-height:8px; }
+  .dots span{ width:6px; height:6px; border-radius:50%; background:#d8d5cc; }
+  .dots span.on{ background:var(--accent); }
+  .empty-note{ font-size:12px; color:var(--sub); text-align:center; padding:6px 20px; }
+
+  /* 누적 투자 카드 */
+  .total-card{ margin:0 20px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; display:flex; flex-direction:column; gap:14px; }
+  .total-top{ display:flex; align-items:center; gap:16px; }
+  .donut{ width:74px; height:74px; flex-shrink:0; }
+  .donut svg{ width:100%; height:100%; }
+  .total-info{ flex:1; }
+  .total-label{ font-size:12px; color:var(--sub); font-weight:600; }
+  .total-value{ font-size:19px; font-weight:700; margin-top:2px; }
+  .total-edit{ font-size:11.5px; color:var(--accent); font-weight:600; margin-top:6px; display:inline-block; }
+  .legend2{ display:flex; flex-direction:column; gap:0; font-size:11px; color:var(--sub); border-top:1px solid var(--line); padding-top:8px; }
+  .legend-row{ display:flex; align-items:center; gap:6px; padding:7px 0; }
+  .legend-row.active{ font-weight:700; color:var(--ink); }
+  .dot-sw{ width:8px; height:8px; border-radius:2px; display:inline-block; flex-shrink:0; }
+  .chevron{ margin-left:auto; font-size:10px; color:var(--sub); transition:transform .15s; }
+  .legend-row.active .chevron{ transform:rotate(90deg); color:var(--accent); }
+  .drilldown{ display:none; flex-direction:column; gap:8px; padding:2px 0 8px 14px; }
+  .drilldown.open{ display:flex; }
+  .stock-row{ display:flex; justify-content:space-between; align-items:center; background:var(--focus); border-radius:10px; padding:9px 12px; gap:10px; }
+  .stock-name{ font-size:12.5px; font-weight:600; }
+  .stock-amt{ font-size:11.5px; color:var(--sub); white-space:nowrap; }
+  .divider-note{ font-size:11.5px; color:var(--sub); text-align:center; padding:0 20px; }
+
+  /* 타임라인 */
+  .month-nav{ display:flex; align-items:center; justify-content:center; gap:18px; padding:0 20px; }
+  .month-nav button{ width:32px; height:32px; border-radius:10px; background:var(--focus); font-size:16px; color:var(--sub); }
+  .month-nav .m{ font-size:15px; font-weight:700; min-width:96px; text-align:center; }
+  .view-toggle{ margin:0 20px; display:flex; background:var(--focus); border-radius:10px; padding:3px; }
+  .view-toggle button{ flex:1; padding:8px; font-size:12.5px; font-weight:600; color:var(--sub); border-radius:8px; }
+  .view-toggle button.on{ background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:0 20px; }
+  .cal-dow{ font-size:10.5px; color:var(--sub); text-align:center; font-weight:600; }
+  .cal-cell{ aspect-ratio:1; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; color:var(--sub); background:#f1efe9; }
+  .cal-cell.regular{ background:#e2e6f8; color:var(--accent); font-weight:700; }
+  .cal-cell.adhoc{ background:var(--amber-soft); color:var(--amber); font-weight:700; }
+  .cal-cell.both{ background:linear-gradient(135deg,#e2e6f8 50%,var(--amber-soft) 50%); color:var(--ink); font-weight:700; }
+  .cal-cell .mood{ font-size:12px; margin-top:1px; }
+  .legend{ display:flex; gap:14px; padding:2px 20px; font-size:11.5px; color:var(--sub); flex-wrap:wrap; }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .insight-card{ margin:0 20px; background:#eef0fb; border-radius:14px; padding:13px 15px; display:flex; gap:10px; align-items:flex-start; }
+  .insight-icon{ font-size:16px; }
+  .insight-text{ font-size:12.5px; color:#31386e; line-height:1.5; }
+  .insight-text b{ font-weight:700; }
+  .list-preview{ margin:0 20px; display:flex; flex-direction:column; gap:8px; }
+  .mini-entry{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:11px 13px; display:flex; flex-direction:column; gap:4px; }
+  .mini-entry .top{ display:flex; justify-content:space-between; align-items:center; }
+  .mini-entry .l{ font-size:13px; font-weight:700; }
+  .mini-entry .r{ font-size:11px; color:var(--sub); }
+  .mini-entry .subline{ font-size:11.5px; color:var(--sub); }
+  .tag-sm{ font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:20px; color:#fff; }
+  .tag-sm.regular{ background:var(--accent); }
+  .tag-sm.adhoc{ background:var(--amber); }
+  .del-x{ font-size:11px; color:var(--sub); padding:2px 6px; }
+
+  /* 바텀시트 모달 */
+  .sheet-overlay{ position:fixed; inset:0; background:rgba(20,22,28,0.42); display:none; align-items:flex-end; z-index:200; }
+  .sheet-overlay.open{ display:flex; }
+  .sheet{ width:100%; max-height:88%; background:#fff; border-radius:20px 20px 0 0; padding:14px 20px calc(24px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:14px; overflow-y:auto; animation:slideup .22s ease; }
+  @keyframes slideup{ from{ transform:translateY(100%); } to{ transform:translateY(0); } }
+  .sheet-handle{ width:36px; height:4px; border-radius:2px; background:#d8d5cc; margin:0 auto; }
+  .sheet-header{ display:flex; justify-content:space-between; align-items:center; }
+  .sheet-title{ font-size:16px; font-weight:700; }
+  .sheet-close{ font-size:13px; color:var(--sub); }
+  .form-label{ font-size:12px; font-weight:700; color:#54524d; display:flex; gap:4px; align-items:center; }
+  .required{ color:#b3423f; font-weight:700; font-size:11px; }
+  .chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ padding:8px 14px; border-radius:20px; font-size:13px; font-weight:600; background:var(--focus); color:var(--ink); }
+  .chip.on{ background:var(--accent); color:#fff; }
+  .input{ background:var(--focus); border:1.5px solid transparent; border-radius:10px; padding:11px 13px; font-size:14px; color:var(--ink); }
+  .input:focus{ border-color:var(--accent); }
+  select.input{ appearance:none; }
+  textarea.input{ min-height:58px; resize:none; }
+  .form-field{ display:flex; flex-direction:column; gap:7px; }
+  .mood-row{ display:flex; gap:8px; }
+  .mood-chip{ flex:1; text-align:center; padding:10px 6px; border-radius:12px; font-size:12.5px; background:var(--focus); color:var(--ink); font-weight:600; }
+  .mood-chip.on{ background:var(--accent); color:#fff; }
+  .save-btn{ background:var(--accent); color:#fff; text-align:center; padding:14px; border-radius:12px; font-weight:700; font-size:14.5px; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; background:var(--focus); border-radius:10px; padding:11px 13px; font-size:13px; font-weight:600; }
+  .switch{ width:44px; height:26px; border-radius:20px; background:#cfccc4; position:relative; transition:background .15s; flex-shrink:0; }
+  .switch.on{ background:var(--accent); }
+  .switch::after{ content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .15s; }
+  .switch.on::after{ left:21px; }
+  .base-edit-row{ display:flex; align-items:center; gap:10px; }
+  .base-edit-row .nm{ flex:1; font-size:13px; font-weight:600; }
+  .base-edit-row .acc{ font-size:11px; color:var(--sub); font-weight:500; }
+  .hint{ font-size:11.5px; color:var(--sub); line-height:1.5; }
+
+  /* 탭바 + FAB */
+  .tabbar{ position:fixed; left:0; right:0; bottom:0; display:flex; border-top:1px solid var(--line); background:#fff; padding:8px 0 calc(14px + env(safe-area-inset-bottom)); z-index:100; }
+  .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:11px; color:var(--sub); font-weight:600; }
+  .tab.active{ color:var(--accent); }
+  .tab .ico{ font-size:18px; line-height:1; }
+  .fab{ position:fixed; right:18px; bottom:calc(var(--tab-h) + 20px + env(safe-area-inset-bottom)); background:var(--accent); color:#fff; width:54px; height:54px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 10px 18px -6px rgba(43,58,143,0.55); z-index:120; }
+
+  #toast{ position:fixed; left:50%; bottom:calc(var(--tab-h) + 40px); transform:translateX(-50%) translateY(20px); background:#14161c; color:#fff;
+    padding:11px 18px; border-radius:22px; font-size:13px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s; z-index:500; white-space:nowrap; }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- 스플래시 -->
+<div id="splash"><div class="logo">📈</div><div class="spin"></div></div>
+
+<!-- 로그인 -->
+<div id="auth">
+  <div class="logo">📈</div>
+  <div class="title">투자 일지</div>
+  <div class="sub">기록은 가볍게, 회고는 선명하게</div>
+  <div class="auth-card">
+    <div class="auth-err" id="auth-err"></div>
+    <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password" inputmode="numeric">
+    <button class="btn-full" onclick="doLogin()">들어가기</button>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div id="app">
+  <!-- 홈 -->
+  <div class="screen" id="screen-home">
+    <div class="pad">
+      <div class="eyebrow">HOME</div>
+      <h1 id="home-greeting">안녕하세요</h1>
+      <p class="lead">이번 주 투자 기록을 확인해보세요</p>
+    </div>
+
+    <div class="section-title">이번 주 매수 확인 <span class="section-sub">· 계좌별로 넘겨보세요</span></div>
+    <div class="carousel-wrap">
+      <div class="carousel-track" id="carousel"></div>
+    </div>
+    <div class="dots" id="dots"></div>
+
+    <div class="section-title" style="margin-top:2px;">전체 누적 투자 <span class="section-sub">· 지금까지 쌓인 금액</span></div>
+    <div class="total-card">
+      <div class="total-top">
+        <div class="donut" id="donut"></div>
+        <div class="total-info">
+          <div class="total-label">전체 누적 투자금</div>
+          <div class="total-value" id="total-value">0원</div>
+          <span class="total-edit" onclick="openBaseEdit()">기준값 수정</span>
+        </div>
+      </div>
+      <div class="legend2" id="legend2"></div>
+    </div>
+    <div class="divider-note">계좌 이름을 다시 누르면 세부 종목이 접혀요</div>
+  </div>
+
+  <!-- 타임라인 -->
+  <div class="screen hidden" id="screen-timeline">
+    <div class="pad">
+      <div class="eyebrow">TIMELINE</div>
+      <h1 style="font-size:19px;">이달의 기록</h1>
+    </div>
+    <div class="month-nav">
+      <button onclick="moveMonth(-1)">‹</button>
+      <div class="m" id="tl-month">2026.07</div>
+      <button onclick="moveMonth(1)">›</button>
+    </div>
+    <div class="view-toggle">
+      <button class="on" id="btn-cal" onclick="setView('cal')">캘린더 보기</button>
+      <button id="btn-list" onclick="setView('list')">리스트 보기</button>
+    </div>
+
+    <div id="view-cal">
+      <div class="legend">
+        <span><span class="dot-sw" style="background:#c7cdf2;"></span>정기</span>
+        <span><span class="dot-sw" style="background:#f0d9b3;"></span>상시</span>
+        <span><span class="dot-sw" style="background:#f1efe9;"></span>기록 없음</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="section-title" style="margin-top:6px;">이달의 인사이트</div>
+      <div class="insight-card">
+        <span class="insight-icon">💡</span>
+        <span class="insight-text" id="insight-text">기록이 쌓이면 이달의 패턴을 요약해 드려요.</span>
+      </div>
+    </div>
+
+    <div id="view-list" style="display:none;">
+      <div class="section-title">전체 기록 <span class="section-sub">· 최신순</span></div>
+      <div class="list-preview" id="list-preview"></div>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <div class="fab" onclick="openAdhoc()">＋</div>
+
+  <div class="tabbar">
+    <button class="tab active" id="tab-home" onclick="setTab('home')"><span class="ico">🏠</span>홈</button>
+    <button class="tab" id="tab-timeline" onclick="setTab('timeline')"><span class="ico">🗓</span>타임라인</button>
+  </div>
+</div>
+
+<!-- 상시(특이사항) 기록 모달 -->
+<div class="sheet-overlay" id="modal-adhoc">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">특이사항 기록</div>
+      <div class="sheet-close" onclick="closeSheet('modal-adhoc')">닫기 ✕</div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">유형</div>
+      <div class="chip-row" id="adhoc-type">
+        <div class="chip on" data-v="buy">매수</div>
+        <div class="chip" data-v="sell">매도</div>
+        <div class="chip" data-v="stop_loss">손절</div>
+      </div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">계좌 <span class="required">*필수</span></div>
+      <select class="input" id="adhoc-account"></select>
+    </div>
+    <div class="form-field">
+      <div class="form-label">종목명 <span class="required">*필수</span></div>
+      <input class="input" id="adhoc-symbol" placeholder="예: 삼성전자">
+    </div>
+    <div class="field-row">
+      <div class="form-field" style="flex:1;"><div class="form-label">수량</div><input class="input" id="adhoc-qty" inputmode="decimal" placeholder="0"></div>
+      <div class="form-field" style="flex:1;"><div class="form-label">단가</div><input class="input" id="adhoc-price" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <div class="toggle-row" id="adhoc-stoploss-row" style="display:none;">
+      <span>손절 기준을 지켰나요?</span>
+      <div class="switch on" id="adhoc-stoploss" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">매매 이유 <span class="required">*필수</span></div>
+      <textarea class="input" id="adhoc-reason" placeholder="왜 샀는지/팔았는지 한 줄로"></textarea>
+    </div>
+    <div class="form-field">
+      <div class="form-label">오늘 기분 <span class="required">*필수</span></div>
+      <div class="mood-row" id="adhoc-mood">
+        <div class="mood-chip" data-v="calm">😌 편안</div>
+        <div class="mood-chip" data-v="neutral">😐 보통</div>
+        <div class="mood-chip" data-v="anxious">😰 불안</div>
+      </div>
+    </div>
+    <div class="save-btn" onclick="saveAdhoc()">기록 저장</div>
+  </div>
+</div>
+
+<!-- 적립식 매수 추가 모달 -->
+<div class="sheet-overlay" id="modal-recurring">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">적립식 매수 추가</div>
+      <div class="sheet-close" onclick="closeSheet('modal-recurring')">닫기 ✕</div>
+    </div>
+    <p class="hint">매주 반복하는 정기(DCA) 매수를 등록하면 홈 카드에서 바로 확인만 하면 돼요.</p>
+    <div class="form-field">
+      <div class="form-label">계좌 <span class="required">*필수</span></div>
+      <select class="input" id="rec-account"></select>
+    </div>
+    <div class="form-field">
+      <div class="form-label">종목명 <span class="required">*필수</span></div>
+      <input class="input" id="rec-symbol" placeholder="예: 코스피200 ETF">
+    </div>
+    <div class="field-row">
+      <div class="form-field" style="flex:1;"><div class="form-label">기본 수량</div><input class="input" id="rec-qty" inputmode="decimal" placeholder="0"></div>
+      <div class="form-field" style="flex:1;"><div class="form-label">기본 단가</div><input class="input" id="rec-price" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <div class="form-field">
+      <div class="form-label">지금까지 누적 투자금 <span class="section-sub">(선택 · 기준값)</span></div>
+      <input class="input" id="rec-opening" inputmode="numeric" placeholder="0">
+      <span class="hint">이미 투자해 온 금액이 있으면 입력하세요. 이후 매수 기록이 여기에 자동으로 더해져요.</span>
+    </div>
+    <div class="save-btn" onclick="saveRecurring()">등록하기</div>
+  </div>
+</div>
+
+<!-- 기준값 수정 모달 -->
+<div class="sheet-overlay" id="modal-base">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title">기준값 수정</div>
+      <div class="sheet-close" onclick="closeSheet('modal-base')">닫기 ✕</div>
+    </div>
+    <p class="hint">종목별 최초 누적 투자금(기준값)을 조정할 수 있어요. 이후 쌓인 매매 기록은 자동으로 더해집니다.</p>
+    <div id="base-list" style="display:flex; flex-direction:column; gap:14px;"></div>
+    <div class="save-btn" onclick="saveBase()">저장</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// =============================================
+// 상태
+// =============================================
+let ACCOUNTS = [];
+let HOLDINGS = [];
+let RECURRING = [];             // 홈: 정기(DCA) 카드 목록
+let MONTH_TRADES = [];          // 홈: 이번 달 매매 (주간 확인 판정용)
+let TL_TRADES = [];             // 타임라인: 선택 월 매매
+let tlYear, tlMonth;            // 타임라인 조회 월
+const EMOTION = { calm:{e:'😌',l:'편안'}, neutral:{e:'😐',l:'보통'}, anxious:{e:'😰',l:'불안'} };
+const TYPE_LABEL = { buy:'매수', sell:'매도', stop_loss:'손절' };
+
+// =============================================
+// API
+// =============================================
+async function api(method, path, body, _retry = true, _attempt = 1){
+  const opts = { method, headers:{ 'Content-Type':'application/json' } };
+  const token = localStorage.getItem('app_token');
+  if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+  if (body) opts.body = JSON.stringify(body);
+  let res;
+  try {
+    res = await fetch(path, opts);
+  } catch(e){
+    if (_attempt < 3){ await new Promise(r=>setTimeout(r,1200*_attempt)); return api(method,path,body,_retry,_attempt+1); }
+    throw new Error('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+  }
+  if (res.status === 401 && _retry){ doLogout(); return; }
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || '오류가 발생했습니다.');
+  return data;
+}
+
+// =============================================
+// 유틸
+// =============================================
+function won(n){ return (n||0).toLocaleString('ko-KR') + '원'; }
+function parseNum(s){ return parseInt(String(s||'0').replace(/[^0-9-]/g,'')) || 0; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg, ms=2200){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),ms); }
+function weekRange(d){ // 월~일
+  const day = (d.getDay()+6)%7; const mon=new Date(d); mon.setDate(d.getDate()-day); mon.setHours(0,0,0,0);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  return [mon,sun];
+}
+
+// =============================================
+// 인증
+// =============================================
+function showAuthErr(m){ const el=document.getElementById('auth-err'); el.textContent=m; el.style.display='block'; }
+async function doLogin(){
+  const pw = document.getElementById('login-pw').value;
+  if (!pw) return showAuthErr('비밀번호를 입력하세요.');
+  try {
+    const res = await fetch('/api/auth/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) return showAuthErr(data.error || '비밀번호가 올바르지 않아요.');
+    localStorage.setItem('app_token', data.token);
+    enterApp();
+  } catch(e){ showAuthErr('서버에 연결할 수 없습니다.'); }
+}
+function doLogout(){
+  localStorage.removeItem('app_token');
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('splash').style.display='none';
+  document.getElementById('auth').style.display='flex';
+}
+document.getElementById('login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+async function enterApp(){
+  document.getElementById('splash').style.display='none';
+  document.getElementById('auth').style.display='none';
+  document.getElementById('app').classList.add('on');
+  const now = new Date(); tlYear=now.getFullYear(); tlMonth=now.getMonth()+1;
+  try { await ensureAccounts(); await loadHome(); }
+  catch(e){ showToast(e.message || '불러오기 실패'); }
+}
+
+// 계좌가 없으면 기본 3계좌 시드
+async function ensureAccounts(){
+  ACCOUNTS = await api('GET','/api/inv/accounts');
+  if (!ACCOUNTS || ACCOUNTS.length === 0){
+    const r = await api('POST','/api/inv/seed');
+    ACCOUNTS = r.accounts || await api('GET','/api/inv/accounts');
+  }
+}
+
+// =============================================
+// 홈
+// =============================================
+async function loadHome(){
+  const [ov, holdings] = await Promise.all([
+    api('GET','/api/inv/overview'),
+    api('GET','/api/inv/holdings'),
+  ]);
+  HOLDINGS = holdings || [];
+  // 이번 달 매매 (주간 확인 판정)
+  const now = new Date();
+  MONTH_TRADES = await api('GET',`/api/inv/trades?year=${now.getFullYear()}&month=${now.getMonth()+1}`) || [];
+  renderCarousel(ov.recurring || []);
+  renderTotal(ov);
+}
+
+function confirmedThisWeek(holdingId){
+  const [mon,sun] = weekRange(new Date());
+  return MONTH_TRADES.some(t => t.holding_id===holdingId && t.record_type==='regular'
+    && new Date(t.date+'T00:00:00')>=mon && new Date(t.date+'T00:00:00')<=sun);
+}
+
+function renderCarousel(recurring){
+  RECURRING = recurring;
+  const track = document.getElementById('carousel');
+  const dots = document.getElementById('dots');
+  let html = '';
+  recurring.forEach(r => {
+    const done = confirmedThisWeek(r.holding_id);
+    const qty = r.quantity!=null ? r.quantity : '-';
+    const price = r.price!=null ? Number(r.price).toLocaleString('ko-KR') : '-';
+    html += `<div class="dca-card">
+      <span class="acct-tag">${esc(r.account)}</span>
+      <div class="dca-title">${esc(r.symbol)} 매수</div>
+      <div class="field-row">
+        <div class="field"><label>수량</label><div class="box">${qty} <span class="unit">주</span></div></div>
+        <div class="field"><label>단가</label><div class="box">${price} <span class="unit">원</span></div></div>
+      </div>
+      <div class="mini-btn ${done?'done':''}" ${done?'':`onclick="confirmRecurring('${r.holding_id}')"`}>${done?'이번 주 완료 ✓':'확인 완료'}</div>
+    </div>`;
+  });
+  html += `<div class="add-card" onclick="openRecurring()"><div class="plus">＋</div>적립식<br>매수 추가</div>`;
+  track.innerHTML = html;
+
+  // dots (실제 카드 개수만)
+  dots.innerHTML = recurring.map((_,i)=>`<span class="${i===0?'on':''}"></span>`).join('');
+  track._count = recurring.length;
+}
+
+document.getElementById('carousel').addEventListener('scroll', e=>{
+  const track = e.target; const dots = document.getElementById('dots');
+  if (!track._count) return;
+  const card = track.querySelector('.dca-card'); if(!card) return;
+  const w = card.offsetWidth + 14;
+  const idx = Math.min(Math.round(track.scrollLeft / w), track._count-1);
+  Array.from(dots.children).forEach((d,i)=> d.classList.toggle('on', i===idx));
+});
+
+async function confirmRecurring(holdingId){
+  const r = RECURRING.find(x => x.holding_id === holdingId);
+  if (!r) return;
+  try {
+    await api('POST','/api/inv/trades', {
+      account_id: r.account_id, holding_id: r.holding_id, symbol: r.symbol,
+      trade_type:'buy', date: todayStr(),
+      quantity: r.quantity, price: r.price,
+      record_type:'regular', plan_followed:true,
+    });
+    showToast('이번 주 매수 기록 완료 ✓');
+    await loadHome();
+  } catch(e){ showToast(e.message); }
+}
+
+function buildDonut(groups, total){
+  const size=36, r=15.5, cx=18, cy=18;
+  let circles = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eceaf9" stroke-width="4"/>`;
+  if (total>0){
+    let offset=0;
+    groups.forEach(g=>{
+      const len = g.amount/total*100;
+      if (len<=0) return;
+      circles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${g.color}" stroke-width="4" pathLength="100"
+        stroke-dasharray="${len.toFixed(2)} ${(100-len).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"
+        stroke-linecap="butt" transform="rotate(-90 ${cx} ${cy})"/>`;
+      offset += len;
+    });
+  }
+  return `<svg viewBox="0 0 ${size} ${size}">${circles}</svg>`;
+}
+
+function renderTotal(ov){
+  document.getElementById('total-value').textContent = won(ov.total);
+  document.getElementById('donut').innerHTML = buildDonut(ov.groups||[], ov.total||0);
+  const legend = document.getElementById('legend2');
+  if (!ov.groups || ov.groups.length===0){
+    legend.innerHTML = `<div class="empty-note" style="padding:10px 0;">아직 누적 투자 데이터가 없어요.<br>적립식 매수를 등록하거나 기록을 남겨보세요.</div>`;
+    return;
+  }
+  legend.innerHTML = ov.groups.map(g=>{
+    const drill = g.symbols.map(s=>`<div class="stock-row"><div class="stock-name">${esc(s.symbol)} <span class="acc" style="font-size:10.5px;color:var(--sub);">(${esc(s.account)})</span></div><div class="stock-amt">${won(s.amount)}</div></div>`).join('');
+    return `<div class="legend-row" data-g="${g.key}" onclick="toggleDrill('${g.key}')">
+        <span class="dot-sw" style="background:${g.color};"></span>
+        ${esc(g.label)} · ${g.pct}% (${won(g.amount)})
+        <span class="chevron">▸</span>
+      </div>
+      <div class="drilldown" id="drill-${g.key}">${drill}</div>`;
+  }).join('');
+}
+
+function toggleDrill(key){
+  const el = document.getElementById('drill-'+key);
+  const row = document.querySelector(`.legend-row[data-g="${key}"]`);
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.drilldown').forEach(d=>d.classList.remove('open'));
+  document.querySelectorAll('.legend-row').forEach(r=>r.classList.remove('active'));
+  if (!isOpen){ el.classList.add('open'); row.classList.add('active'); }
+}
+
+// =============================================
+// 계좌 셀렉트 채우기
+// =============================================
+function fillAccountSelect(id){
+  const sel = document.getElementById(id);
+  sel.innerHTML = ACCOUNTS.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+}
+
+// =============================================
+// 상시 기록 모달
+// =============================================
+function openAdhoc(){
+  if (ACCOUNTS.length===0){ showToast('먼저 계좌가 필요해요.'); return; }
+  fillAccountSelect('adhoc-account');
+  // 초기화
+  setChip('adhoc-type','buy'); setMood('adhoc-mood',null);
+  document.getElementById('adhoc-symbol').value='';
+  document.getElementById('adhoc-qty').value='';
+  document.getElementById('adhoc-price').value='';
+  document.getElementById('adhoc-reason').value='';
+  document.getElementById('adhoc-stoploss-row').style.display='none';
+  document.getElementById('adhoc-stoploss').classList.add('on');
+  openSheet('modal-adhoc');
+}
+function setChip(containerId, val){
+  document.querySelectorAll(`#${containerId} .chip`).forEach(c=>c.classList.toggle('on', c.dataset.v===val));
+}
+function setMood(containerId, val){
+  document.querySelectorAll(`#${containerId} .mood-chip`).forEach(c=>c.classList.toggle('on', c.dataset.v===val));
+}
+document.querySelectorAll('#adhoc-type .chip').forEach(c=>c.addEventListener('click',()=>{
+  setChip('adhoc-type', c.dataset.v);
+  document.getElementById('adhoc-stoploss-row').style.display = c.dataset.v==='stop_loss' ? 'flex' : 'none';
+}));
+document.querySelectorAll('#adhoc-mood .mood-chip').forEach(c=>c.addEventListener('click',()=>setMood('adhoc-mood', c.dataset.v)));
+
+async function saveAdhoc(){
+  const type = document.querySelector('#adhoc-type .chip.on')?.dataset.v || 'buy';
+  const account_id = document.getElementById('adhoc-account').value;
+  const symbol = document.getElementById('adhoc-symbol').value.trim();
+  const reason = document.getElementById('adhoc-reason').value.trim();
+  const mood = document.querySelector('#adhoc-mood .mood-chip.on')?.dataset.v || null;
+  if (!symbol) return showToast('종목명을 입력하세요.');
+  if (!reason) return showToast('매매 이유는 필수예요.');
+  if (!mood) return showToast('오늘 기분을 선택하세요.');
+  const payload = {
+    account_id, symbol, trade_type:type, date: todayStr(), record_type:'adhoc',
+    quantity: document.getElementById('adhoc-qty').value,
+    price: document.getElementById('adhoc-price').value,
+    reason, emotion: mood,
+  };
+  if (type==='stop_loss') payload.stop_loss_check = document.getElementById('adhoc-stoploss').classList.contains('on');
+  try {
+    await api('POST','/api/inv/trades', payload);
+    closeSheet('modal-adhoc');
+    showToast('기록이 저장됐어요.');
+    await loadHome();
+    if (!document.getElementById('screen-timeline').classList.contains('hidden')) await loadTimeline();
+  } catch(e){ showToast(e.message); }
+}
+
+// =============================================
+// 적립식 매수 추가 모달
+// =============================================
+function openRecurring(){
+  if (ACCOUNTS.length===0){ showToast('먼저 계좌가 필요해요.'); return; }
+  fillAccountSelect('rec-account');
+  ['rec-symbol','rec-qty','rec-price','rec-opening'].forEach(id=>document.getElementById(id).value='');
+  openSheet('modal-recurring');
+}
+async function saveRecurring(){
+  const account_id = document.getElementById('rec-account').value;
+  const symbol = document.getElementById('rec-symbol').value.trim();
+  if (!symbol) return showToast('종목명을 입력하세요.');
+  try {
+    await api('POST','/api/inv/holdings', {
+      account_id, symbol, is_recurring:true,
+      dca_quantity: document.getElementById('rec-qty').value,
+      dca_price: document.getElementById('rec-price').value,
+      opening_amount: document.getElementById('rec-opening').value,
+    });
+    closeSheet('modal-recurring');
+    showToast('적립식 매수가 등록됐어요.');
+    await loadHome();
+  } catch(e){ showToast(e.message); }
+}
+
+// =============================================
+// 기준값 수정 모달
+// =============================================
+function openBaseEdit(){
+  if (HOLDINGS.length===0){ showToast('먼저 종목을 등록해주세요.'); return; }
+  const list = document.getElementById('base-list');
+  list.innerHTML = HOLDINGS.map(h=>{
+    const acc = h.inv_accounts ? h.inv_accounts.name : '';
+    return `<div class="form-field">
+      <div class="base-edit-row"><div class="nm">${esc(h.symbol)} <span class="acc">${esc(acc)}</span></div></div>
+      <input class="input base-input" data-id="${h.id}" inputmode="numeric" value="${(h.opening_amount||0).toLocaleString('ko-KR')}">
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.base-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{ const v=inp.value.replace(/[^0-9]/g,''); inp.value = v?parseInt(v).toLocaleString('ko-KR'):''; });
+  });
+  openSheet('modal-base');
+}
+async function saveBase(){
+  const inputs = document.querySelectorAll('#base-list .base-input');
+  try {
+    for (const inp of inputs){
+      await api('PUT','/api/inv/holdings/'+inp.dataset.id, { opening_amount: inp.value });
+    }
+    closeSheet('modal-base');
+    showToast('기준값이 저장됐어요.');
+    await loadHome();
+  } catch(e){ showToast(e.message); }
+}
+
+// 금액 입력 콤마
+['adhoc-price','rec-price','rec-opening'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', e=>{
+    const v = e.target.value.replace(/[^0-9]/g,''); e.target.value = v?parseInt(v).toLocaleString('ko-KR'):'';
+  });
+});
+
+// =============================================
+// 타임라인
+// =============================================
+function moveMonth(delta){
+  tlMonth += delta;
+  if (tlMonth<1){ tlMonth=12; tlYear--; } else if (tlMonth>12){ tlMonth=1; tlYear++; }
+  loadTimeline();
+}
+async function loadTimeline(){
+  document.getElementById('tl-month').textContent = `${tlYear}.${pad(tlMonth)}`;
+  try {
+    const [trades, insight] = await Promise.all([
+      api('GET',`/api/inv/trades?year=${tlYear}&month=${tlMonth}`),
+      api('GET',`/api/inv/insights?year=${tlYear}&month=${tlMonth}`),
+    ]);
+    TL_TRADES = trades || [];
+    renderCalendar();
+    renderList();
+    renderInsight(insight);
+  } catch(e){ showToast(e.message); }
+}
+
+function renderCalendar(){
+  const grid = document.getElementById('cal-grid');
+  const dows = ['일','월','화','수','목','금','토'];
+  let html = dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const first = new Date(tlYear, tlMonth-1, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(tlYear, tlMonth, 0).getDate();
+
+  // 날짜별 집계
+  const byDay = {};
+  TL_TRADES.forEach(t=>{
+    const d = parseInt(t.date.slice(8,10));
+    if (!byDay[d]) byDay[d] = { regular:false, adhoc:false, emotion:null };
+    if (t.record_type==='regular') byDay[d].regular=true; else byDay[d].adhoc=true;
+    if (t.emotion) byDay[d].emotion = t.emotion; // 최신순 정렬이라 첫 값이 최신
+  });
+
+  for (let i=0;i<startDow;i++) html += `<div class="cal-cell"></div>`;
+  for (let d=1; d<=daysInMonth; d++){
+    const info = byDay[d];
+    let cls='cal-cell', mood='';
+    if (info){
+      if (info.regular && info.adhoc) cls+=' both';
+      else if (info.regular) cls+=' regular';
+      else if (info.adhoc) cls+=' adhoc';
+      if (info.emotion) mood = `<div class="mood">${EMOTION[info.emotion].e}</div>`;
+    }
+    html += `<div class="${cls}">${d}${mood}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function renderList(){
+  const wrap = document.getElementById('list-preview');
+  if (TL_TRADES.length===0){ wrap.innerHTML = `<div class="empty-note">이 달의 기록이 아직 없어요.</div>`; return; }
+  const dows=['일','월','화','수','목','금','토'];
+  wrap.innerHTML = TL_TRADES.map(t=>{
+    const d = new Date(t.date+'T00:00:00');
+    const dateLabel = `${tlMonth}월 ${d.getDate()}일 (${dows[d.getDay()]})`;
+    const isReg = t.record_type==='regular';
+    const tag = isReg ? `<span class="tag-sm regular">정기</span>` : `<span class="tag-sm adhoc">상시</span>`;
+    const title = `${esc(t.symbol)} ${t.quantity?esc(String(t.quantity))+'주 ':''}${TYPE_LABEL[t.trade_type]||''}`;
+    const mood = t.emotion ? ` · ${EMOTION[t.emotion].e} ${EMOTION[t.emotion].l}` : '';
+    let sub;
+    if (isReg){
+      sub = `${t.price?Number(t.price).toLocaleString('ko-KR')+'원':''}${mood}`;
+    } else {
+      sub = `${t.reason?'"'+esc(t.reason)+'"':''}${mood}`;
+    }
+    return `<div class="mini-entry">
+      <div class="top"><div>${tag} <span class="r">${dateLabel}</span></div><span class="del-x" onclick="delTrade('${t.id}')">삭제</span></div>
+      <div class="l">${title}</div>
+      <div class="subline">${sub||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderInsight(ins){
+  const el = document.getElementById('insight-text');
+  if (!ins || ins.total===0){ el.innerHTML = '이 달은 아직 기록이 없어요. 첫 기록을 남겨보세요.'; return; }
+  el.innerHTML = `<b>불안</b> 태그가 붙은 매매가 이번 달 <b>${ins.anxious_count}건</b> 있었어요. `
+    + `정기 기록 중 계획대로 진행된 건 <b>${ins.plan_followed_count}건</b>이에요.`;
+}
+
+async function delTrade(id){
+  if (!confirm('이 기록을 삭제할까요?')) return;
+  try { await api('DELETE','/api/inv/trades/'+id); showToast('삭제됐어요.'); await loadTimeline(); await loadHome(); }
+  catch(e){ showToast(e.message); }
+}
+
+// =============================================
+// 탭 / 뷰 / 시트
+// =============================================
+function setTab(name){
+  document.getElementById('screen-home').classList.toggle('hidden', name!=='home');
+  document.getElementById('screen-timeline').classList.toggle('hidden', name!=='timeline');
+  document.getElementById('tab-home').classList.toggle('active', name==='home');
+  document.getElementById('tab-timeline').classList.toggle('active', name==='timeline');
+  if (name==='timeline') loadTimeline();
+  if (name==='home') loadHome();
+}
+function setView(v){
+  document.getElementById('view-cal').style.display = v==='cal'?'block':'none';
+  document.getElementById('view-list').style.display = v==='list'?'block':'none';
+  document.getElementById('btn-cal').classList.toggle('on', v==='cal');
+  document.getElementById('btn-list').classList.toggle('on', v==='list');
+}
+function openSheet(id){ document.getElementById(id).classList.add('open'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.sheet-overlay').forEach(o=>o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); }));
+
+// =============================================
+// 부트
+// =============================================
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/investment/sw.js', { scope:'/investment/' }).catch(()=>{});
+}
+window.addEventListener('load', ()=>{
+  if (localStorage.getItem('app_token')) enterApp();
+  else { document.getElementById('splash').style.display='none'; document.getElementById('auth').style.display='flex'; }
+});
+</script>
+</body>
+</html>
