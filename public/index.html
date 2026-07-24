@@ -143,25 +143,29 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .summary-card .s-value { font-size: 14px; font-weight: 700; }
 .expense-bar-wrap { margin-bottom: 8px; }
 .expense-bar-track {
-  width: 100%; height: 9px; border-radius: 9px;
+  width: 100%; height: 30px; border-radius: 8px;
   background: var(--border); overflow: hidden;
 }
 .expense-bar-inner { display: flex; height: 100%; width: 100%; }
 .expense-bar-fixed {
   background: #B0B0B8; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; white-space: nowrap;
+  color: #fff; font-weight: 600;
   transition: width .4s ease;
 }
 .expense-bar-normal {
   background: #C9B8E8; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; white-space: nowrap;
+  color: #fff; font-weight: 600;
   transition: width .4s ease;
 }
 .expense-bar-empty { font-size: 11px; color: var(--text3); padding: 2px 0; }
-.expense-bar-legend { display: flex; gap: 14px; }
-.expense-bar-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
-.expense-bar-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.summary-balance { text-align: center; font-size: 13px; font-weight: 700; color: #1a1a1a; margin-top: 6px; }
 .s-income { color: var(--income-color); }
 .s-expense { color: var(--expense-color); }
-.s-saving { color: #3DBFA0; }
+.s-saving { color: #5A5A63; }
 .s-balance { color: var(--primary-dark); }
 
 /* 지출수단 관리 */
@@ -778,24 +782,8 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
                   <div class="s-value s-saving" id="sum-saving">₩0</div>
                 </div>
               </div>
-              <div class="expense-bar-wrap" id="expense-bar-wrap">
-                <div class="expense-bar-track">
-                  <div class="expense-bar-inner">
-                    <div class="expense-bar-fixed" id="expense-bar-fixed" style="width:0%"></div>
-                    <div class="expense-bar-normal" id="expense-bar-normal" style="width:0%"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="expense-bar-legend" id="expense-bar-legend">
-                <div class="expense-bar-legend-item">
-                  <div class="expense-bar-legend-dot" style="background:#B0B0B8"></div>
-                  <span>고정 <span id="sum-fixed">₩0</span></span>
-                </div>
-                <div class="expense-bar-legend-item">
-                  <div class="expense-bar-legend-dot" style="background:#C9B8E8"></div>
-                  <span>일반 <span id="sum-normal">₩0</span></span>
-                </div>
-              </div>
+              <div class="expense-bar-wrap" id="expense-bar-wrap"></div>
+              <div class="summary-balance" id="summary-balance"></div>
             </div>
           </div>
         </div>
@@ -2866,26 +2854,49 @@ function renderSummary() {
   document.getElementById('sum-income').textContent = fmt(income);
   document.getElementById('sum-expense').textContent = fmt(expense);
   document.getElementById('sum-saving').textContent = fmt(saving);
-  document.getElementById('sum-fixed').textContent = fmt(fixedExp);
-  document.getElementById('sum-normal').textContent = fmt(normalExp);
+
+  // 잔액 = 수입 - (지출 + 저축·투자)
+  const balance = income - (expense + saving);
+  const balEl = document.getElementById('summary-balance');
+  const balSign = balance < 0 ? '-' : '';
+  balEl.textContent = `잔액 ${balSign}${fmt(Math.abs(balance))}`;
 
   const barWrap = document.getElementById('expense-bar-wrap');
-  const legend = document.getElementById('expense-bar-legend');
   if (expense === 0) {
     barWrap.innerHTML = '<div class="expense-bar-empty">지출 내역이 없어요</div>';
-    legend.style.display = 'none';
-  } else {
-    const fixedPct = Math.round(fixedExp / expense * 100);
-    const normalPct = 100 - fixedPct;
-    barWrap.innerHTML = `
-      <div class="expense-bar-track">
-        <div class="expense-bar-inner">
-          <div class="expense-bar-fixed" style="width:${fixedPct}%"></div>
-          <div class="expense-bar-normal" style="width:${normalPct}%"></div>
-        </div>
-      </div>`;
-    legend.style.display = '';
+    return;
   }
+  const fixedPct = fixedExp / expense * 100;
+  const normalPct = 100 - fixedPct;
+  barWrap.innerHTML = `
+    <div class="expense-bar-track">
+      <div class="expense-bar-inner">
+        <div class="expense-bar-fixed" style="width:${fixedPct}%"></div>
+        <div class="expense-bar-normal" style="width:${normalPct}%"></div>
+      </div>
+    </div>`;
+  // 구간 내부 텍스트 자동 맞춤
+  fitBarSegment(barWrap.querySelector('.expense-bar-fixed'), '고정', fixedExp);
+  fitBarSegment(barWrap.querySelector('.expense-bar-normal'), '일반', normalExp);
+}
+
+// 구간 폭에 맞춰 폰트 축소 → 금액만 → 생략 순으로 처리
+function fitBarSegment(seg, label, amount) {
+  if (!seg) return;
+  const full = `${label} ${fmt(amount)}`;
+  const amtOnly = fmt(amount);
+  const candidates = [
+    { text: full, size: 12 }, { text: full, size: 11 },
+    { text: full, size: 10 }, { text: full, size: 9 },
+    { text: amtOnly, size: 9 },
+  ];
+  for (const c of candidates) {
+    seg.style.fontSize = c.size + 'px';
+    seg.textContent = c.text;
+    if (seg.scrollWidth <= seg.clientWidth) return;
+  }
+  // 그래도 안 들어가면 텍스트 생략
+  seg.textContent = '';
 }
 
 function renderCardSummary() {
