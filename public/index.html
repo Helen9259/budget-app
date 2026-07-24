@@ -2853,14 +2853,15 @@ function renderSummary() {
     else normalExp += t.amount;
   });
   const expense = fixedExp + normalExp;
-  document.getElementById('sum-income').textContent = fmt(income);
-  document.getElementById('sum-expense').textContent = fmt(expense);
-  document.getElementById('sum-saving').textContent = fmt(saving);
+  const noWon = n => fmt(n).replace('₩', '');
+  document.getElementById('sum-income').textContent = noWon(income);
+  document.getElementById('sum-expense').textContent = noWon(expense);
+  document.getElementById('sum-saving').textContent = noWon(saving);
 
   // 잔액 = 수입 - (지출 + 저축·투자)
   const balance = income - (expense + saving);
   const balSign = balance < 0 ? '-' : '';
-  document.getElementById('sum-balance').textContent = `${balSign}${fmt(Math.abs(balance))}`;
+  document.getElementById('sum-balance').textContent = `${balSign}${noWon(Math.abs(balance))}`;
 
   const barWrap = document.getElementById('expense-bar-wrap');
   if (expense === 0) {
