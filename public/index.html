@@ -137,9 +137,8 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .summary-card {
   background: var(--surface2); border-radius: 12px; padding: 12px 14px;
 }
-.summary-card-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
-.summary-col { display: flex; flex-direction: column; }
-.summary-col:last-child { align-items: flex-end; }
+.summary-card-top { display: flex; margin-bottom: 10px; }
+.summary-col { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .summary-card .s-label { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
 .summary-card .s-value { font-size: 14px; font-weight: 700; }
 .expense-bar-wrap { margin-bottom: 8px; }
@@ -149,11 +148,11 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 }
 .expense-bar-inner { display: flex; height: 100%; width: 100%; }
 .expense-bar-fixed {
-  background: #C9B8E8; height: 100%;
+  background: #B0B0B8; height: 100%;
   transition: width .4s ease;
 }
 .expense-bar-normal {
-  background: #FFB5A7; height: 100%;
+  background: #C9B8E8; height: 100%;
   transition: width .4s ease;
 }
 .expense-bar-empty { font-size: 11px; color: var(--text3); padding: 2px 0; }
@@ -162,6 +161,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 .expense-bar-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .s-income { color: var(--income-color); }
 .s-expense { color: var(--expense-color); }
+.s-saving { color: #3DBFA0; }
 .s-balance { color: var(--primary-dark); }
 
 /* 지출수단 관리 */
@@ -773,6 +773,10 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
                   <div class="s-label">지출</div>
                   <div class="s-value s-expense" id="sum-expense">₩0</div>
                 </div>
+                <div class="summary-col">
+                  <div class="s-label">저축·투자</div>
+                  <div class="s-value s-saving" id="sum-saving">₩0</div>
+                </div>
               </div>
               <div class="expense-bar-wrap" id="expense-bar-wrap">
                 <div class="expense-bar-track">
@@ -784,11 +788,11 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
               </div>
               <div class="expense-bar-legend" id="expense-bar-legend">
                 <div class="expense-bar-legend-item">
-                  <div class="expense-bar-legend-dot" style="background:#C9B8E8"></div>
+                  <div class="expense-bar-legend-dot" style="background:#B0B0B8"></div>
                   <span>고정 <span id="sum-fixed">₩0</span></span>
                 </div>
                 <div class="expense-bar-legend-item">
-                  <div class="expense-bar-legend-dot" style="background:#FFB5A7"></div>
+                  <div class="expense-bar-legend-dot" style="background:#C9B8E8"></div>
                   <span>일반 <span id="sum-normal">₩0</span></span>
                 </div>
               </div>
@@ -2850,9 +2854,10 @@ function makeCell(day, other, isToday = false, amounts = null) {
 }
 
 function renderSummary() {
-  let income = 0, fixedExp = 0, normalExp = 0;
+  let income = 0, fixedExp = 0, normalExp = 0, saving = 0;
   state.transactions.forEach(t => {
     if (t.type === 'income') { income += t.amount; return; }
+    if (t.category === '저축' || t.category === '투자') { saving += t.amount; return; }
     if (isExcluded(t.category)) return;
     if (t.is_fixed) fixedExp += t.amount;
     else normalExp += t.amount;
@@ -2860,6 +2865,7 @@ function renderSummary() {
   const expense = fixedExp + normalExp;
   document.getElementById('sum-income').textContent = fmt(income);
   document.getElementById('sum-expense').textContent = fmt(expense);
+  document.getElementById('sum-saving').textContent = fmt(saving);
   document.getElementById('sum-fixed').textContent = fmt(fixedExp);
   document.getElementById('sum-normal').textContent = fmt(normalExp);
 
