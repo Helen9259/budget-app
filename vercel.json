@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "public",
+  "functions": {
+    "api/*.js": { "maxDuration": 60 }
+  },
+  "redirects": [
+    { "source": "/investment", "destination": "/investment/" }
+  ],
+  "rewrites": [
+    { "source": "/api/auth/(.*)", "destination": "/api/auth" },
+    { "source": "/api/transactions", "destination": "/api/transactions" },
+    { "source": "/api/transactions/(.*)", "destination": "/api/transactions" },
+    { "source": "/api/stats", "destination": "/api/stats" },
+    { "source": "/api/categories", "destination": "/api/categories" },
+    { "source": "/api/categories/(.*)", "destination": "/api/categories" },
+    { "source": "/api/credit-cards", "destination": "/api/cards" },
+    { "source": "/api/credit-cards/(.*)", "destination": "/api/cards" },
+    { "source": "/api/fixed-expenses", "destination": "/api/fixed-expenses" },
+    { "source": "/api/fixed-expenses/(.*)", "destination": "/api/fixed-expenses" },
+    { "source": "/api/assets/(.*)", "destination": "/api/assets" },
+    { "source": "/api/payment-methods", "destination": "/api/payment-methods" },
+    { "source": "/api/payment-methods/(.*)", "destination": "/api/payment-methods" },
+    { "source": "/api/loans", "destination": "/api/loans" },
+    { "source": "/api/weekly-report", "destination": "/api/weekly-report" },
+    { "source": "/api/inv/(.*)", "destination": "/api/inv" }
+  ]
+}

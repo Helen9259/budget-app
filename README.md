@@ -4,10 +4,10 @@ Node.js + Express + Supabase 기반 가계부 웹 앱 (PWA 지원)
 
 ## 스택
 
-- **백엔드**: Node.js + Express
-- **DB/인증**: Supabase (Auth + PostgreSQL + RLS)
-- **프론트엔드**: Vanilla JS + Chart.js (예정)
-- **배포**: Railway
+- **백엔드**: Node.js — Vercel 서버리스 함수(`api/*.js`, 기능별 그룹). 로컬은 Express 통합 서버
+- **DB/인증**: Supabase (PostgreSQL) + 단일 비밀번호 세션 토큰
+- **프론트엔드**: Vanilla JS + Chart.js
+- **배포**: Vercel (서버리스) — 이전 Railway/Express 방식에서 전환
 - **PWA**: 홈 화면 추가, 전체화면 실행
 
 ---
@@ -96,6 +96,80 @@ Railway 대시보드 → 프로젝트 → **Variables** 탭에서 아래 추가:
 
 ---
 
+## 3-5. Vercel 서버리스 배포 (권장)
+
+Express 서버를 **기능별 서버리스 함수**로 전환했습니다. `/api` 폴더의 각 파일이
+하나의 서버리스 함수이며(총 11개, Vercel Hobby 12개 제한 이내), 관련 API를 그룹으로
+묶어 HTTP 메서드·경로로 분기합니다. 프론트엔드의 API 호출 경로는 그대로 유지됩니다.
+
+### 구조
+
+```
+api/
+├── auth.js            # /api/auth/verify
+├── transactions.js    # /api/transactions (CRUD·검색·CSV)
+├── stats.js           # /api/stats
+├── categories.js      # /api/categories (CRUD·seed)
+├── cards.js           # /api/credit-cards (CRUD·usage)
+├── fixed-expenses.js  # /api/fixed-expenses (CRUD·generate)
+├── assets.js          # /api/assets (snapshot·history)
+├── payment-methods.js # /api/payment-methods (CRUD·seed)
+├── loans.js           # /api/loans
+├── weekly-report.js   # /api/weekly-report
+└── inv.js             # /api/inv/* (투자 일지 전체)
+lib/
+└── common.js          # supabase 클라이언트·인증·공용 헬퍼
+vercel.json            # 정적 서빙 + /api 경로 → 함수 라우팅
+```
+
+- 각 함수는 미니 Express 앱(`module.exports = app`)이라 라우트 로직을 그대로 재사용합니다.
+- `vercel.json`의 `rewrites`가 `/api/transactions/:id`, `/api/credit-cards/usage` 같은
+  하위·동적 경로를 해당 그룹 함수로 넘깁니다(원본 URL 보존).
+- `server.js`는 로컬 개발 전용으로, 위 함수들을 그대로 mount 해 **동일한 코드**를 구동합니다.
+- 모든 함수 `maxDuration: 60`초 (Hobby 최대치). 무거운 루프가 없어 여유롭습니다.
+
+### 로컬 테스트
+
+두 가지 방법이 있습니다.
+
+```bash
+npm install
+
+# 환경변수 (.env)
+cp .env.example .env      # SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / APP_PASSWORD 입력
+
+# 방법 A) 기존 Express 통합 서버 (가장 간단)
+npm run dev               # → http://localhost:3000
+
+# 방법 B) Vercel 런타임 그대로 재현 (서버리스 에뮬레이션)
+npm i -g vercel
+vercel dev                # → http://localhost:3000, 실제 함수 라우팅 검증
+```
+
+> 두 방법 모두 같은 `api/*.js` 코드를 실행하므로 결과가 동일합니다.
+> 배포 전 라우팅을 정확히 검증하려면 **방법 B(`vercel dev`)** 를 권장합니다.
+
+### Vercel 배포 순서
+
+1. [vercel.com](https://vercel.com) → **Add New → Project** → GitHub 저장소 연결
+2. **Framework Preset: Other** 선택 (빌드 명령 없음, `vercel.json`이 설정을 담당)
+3. **Environment Variables** 에 아래 4개 등록 (Production/Preview 모두):
+
+   | 변수명 | 값 |
+   |---|---|
+   | `SUPABASE_URL` | Supabase Project URL |
+   | `SUPABASE_ANON_KEY` | Supabase anon 키 |
+   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role 키 |
+   | `APP_PASSWORD` | 앱 로그인 비밀번호 |
+
+4. **Deploy** 클릭 → 완료 후 제공되는 URL 접속
+5. 정적 프론트(`public/`)는 `/`, 투자 일지는 `/investment/` 에서 서빙됩니다.
+
+> **참고**: Supabase 스키마(`supabase/*.sql`)는 배포와 무관하게 사전에 SQL Editor에서
+> 적용되어 있어야 합니다. `APP_PASSWORD` 미설정 시 코드 기본값(`950511`)이 사용됩니다.
+
+---
+
 ## 4. 기능 현황
 
 ### STEP 1 (현재)
@@ -128,14 +202,30 @@ Railway 대시보드 → 프로젝트 → **Variables** 탭에서 아래 추가:
 
 ```
 budget-app/
-├── server.js           # Express 서버 + API
+├── server.js           # 로컬 개발용 통합 서버 (api/* 를 mount)
+├── vercel.json         # Vercel 정적 서빙 + /api 라우팅 설정
 ├── package.json
 ├── .env.example        # 환경변수 템플릿
 ├── .gitignore
+├── lib/
+│   └── common.js       # supabase 클라이언트·인증·공용 헬퍼
+├── api/                # Vercel 서버리스 함수 (기능별 그룹)
+│   ├── auth.js
+│   ├── transactions.js
+│   ├── stats.js
+│   ├── categories.js
+│   ├── cards.js
+│   ├── fixed-expenses.js
+│   ├── assets.js
+│   ├── payment-methods.js
+│   ├── loans.js
+│   ├── weekly-report.js
+│   └── inv.js
 ├── public/
-│   ├── index.html      # 단일 페이지 앱 (SPA)
+│   ├── index.html      # 가계부 SPA
 │   ├── manifest.json   # PWA 매니페스트
-│   └── sw.js           # 서비스워커
+│   ├── sw.js           # 서비스워커
+│   └── investment/     # 투자 일지 PWA
 └── supabase/
-    └── schema.sql      # DB 스키마 + RLS 정책
+    └── schema*.sql     # DB 스키마 + 마이그레이션
 ```
