@@ -583,7 +583,6 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 .invest-item { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; }
 .invest-item:last-child { border-bottom: none; }
 .invest-item-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.invest-item-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
 .invest-item-name-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; padding: 6px 8px; }
 .invest-subtype-select { flex-shrink: 0; width: auto; font-size: 12px; font-weight: 600; padding: 6px 6px; color: var(--primary-dark); }
 .asset-row-name-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; padding: 8px 10px; }
@@ -1183,7 +1182,7 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
     <div class="add-asset-box-title" id="add-asset-box-title">항목 추가</div>
     <div class="add-asset-type-btns" id="add-asset-type-btns"></div>
     <div class="form-row"><label>항목명 <span style="color:#e57373">*</span></label>
-      <input type="text" id="new-asset-name" placeholder="예) 국민은행 적금, 삼성전자" lang="ko" inputmode="text" oninput="onNewAssetNameInput()">
+      <input type="text" id="new-asset-name" placeholder="예) 국민은행 적금, 삼성전자" lang="ko" inputmode="text">
     </div>
     <div class="form-row">
       <label>평가액 <span style="color:#e57373">*</span></label>
@@ -1709,10 +1708,6 @@ const INVEST_SUBTYPES = [
 const RATE_SUBTYPES = ['stock', 'etf', 'coin'];
 function subtypeOf(it) {
   return it.invest_subtype || (it.name === '기타' ? 'etc' : 'stock');
-}
-function subtypeLabel(key) {
-  const s = INVEST_SUBTYPES.find(x => x.key === key);
-  return s ? s.label : key;
 }
 
 const assetState = {
@@ -2296,8 +2291,6 @@ async function saveAssetSnapshot() {
 // =============================================
 // 자산 항목 추가 모달
 // =============================================
-function onNewAssetNameInput() { /* 유형은 세부유형 탭으로 결정 — 이름 기반 분기 없음 */ }
-
 // 추가 모달: 세부유형 탭 렌더
 function renderAddInvestSubtypeTabs() {
   const el = document.getElementById('add-invest-subtype-tabs');
