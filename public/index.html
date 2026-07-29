@@ -520,6 +520,8 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 .asset-leg-sub-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
 .asset-leg-sub-name { color: var(--text2); flex: 1; }
 .asset-leg-sub-amt { color: var(--text); font-weight: 600; }
+.asset-leg-subgroup-head { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--text3); padding: 4px 0 1px; margin-top: 2px; }
+.asset-leg-bond-meta { font-size: 10px; color: var(--text3); margin: 0 6px; }
 .asset-chart-canvas { width: 100%; display: block; }
 .asset-chart-legend { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
 .asset-chart-leg-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
@@ -584,6 +586,15 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 .invest-item-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
 .invest-item-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .invest-field { display: flex; flex-direction: column; gap: 3px; }
+.invest-field input[type="date"] { font-size: 12px; font-weight: 600; padding: 6px 4px; text-align: center; }
+/* 투자 세부유형 소그룹 (입력 폼) */
+.invest-subgroup { border-top: 1px solid var(--border); }
+.invest-subgroup:first-child { border-top: none; }
+.invest-subgroup-label { font-size: 11px; font-weight: 700; color: var(--text2); padding: 8px 14px 2px; }
+/* 세부유형 선택 탭 (추가 모달) */
+.invest-subtype-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.invest-subtype-tab { padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; background: var(--surface2); color: var(--text2); border: 1.5px solid transparent; }
+.invest-subtype-tab.selected { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); }
 .invest-field-label { font-size: 10px; color: var(--text3); font-weight: 500; }
 .invest-field input { font-size: 13px; font-weight: 600; padding: 6px 8px; text-align: right; }
 .invest-field-unit { font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; }
@@ -1179,7 +1190,12 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
       </div>
     </div>
     <div id="add-invest-extra" style="display:none">
-      <div class="add-invest-fields">
+      <div class="form-row" style="margin-bottom:8px">
+        <label>세부 유형</label>
+        <div class="invest-subtype-tabs" id="add-invest-subtype-tabs"></div>
+      </div>
+      <!-- 개별주식/ETF/코인: 수량 + 수익률 -->
+      <div class="add-invest-fields" id="add-invest-rate-fields">
         <div class="form-row" style="margin-bottom:0">
           <label>수량 (선택)</label>
           <input type="text" id="new-asset-qty" placeholder="0" inputmode="decimal">
@@ -1192,7 +1208,18 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
           </div>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">항목명을 '기타'로 입력하면 수익률 계산에서 제외됩니다.</div>
+      <!-- 채권: 만기일 + 이자율 -->
+      <div class="add-invest-fields" id="add-invest-bond-fields" style="display:none">
+        <div class="form-row" style="margin-bottom:0">
+          <label>만기일 (선택)</label>
+          <input type="date" id="new-asset-maturity">
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>이자율 % (선택)</label>
+          <input type="text" id="new-asset-interest" placeholder="0.0" inputmode="decimal">
+        </div>
+      </div>
+      <div id="add-invest-etc-note" style="font-size:11px;color:var(--text3);margin-top:4px">기타는 평가액만 입력하며 수익률 계산에서 제외됩니다.</div>
     </div>
     <button class="btn-primary" style="margin-top:14px" onclick="confirmAddAssetItem()">추가</button>
   </div>
@@ -1662,10 +1689,28 @@ function showTab(tab) {
 // 자산관리 상태 & 상수
 // =============================================
 const ASSET_TYPES = [
-  { key: 'savings',    label: '예금·적금',       color: '#A8D8EA', emoji: '🏦' },
-  { key: 'investment', label: '주식·ETF·코인',   color: '#B5EAD7', emoji: '📈' },
-  { key: 'cash',       label: '현금·예수금',      color: '#FFDAC1', emoji: '💵' },
+  { key: 'savings',    label: '예금·적금',   color: '#A8D8EA', emoji: '🏦' },
+  { key: 'investment', label: '투자',        color: '#B5EAD7', emoji: '📈' },
+  { key: 'cash',       label: '현금·예수금',  color: '#FFDAC1', emoji: '💵' },
 ];
+
+// 투자 자산 세부 유형 (type='investment' 안에서 invest_subtype 으로 구분)
+const INVEST_SUBTYPES = [
+  { key: 'stock', label: '개별주식' },
+  { key: 'etf',   label: 'ETF' },
+  { key: 'coin',  label: '코인' },
+  { key: 'bond',  label: '채권' },
+  { key: 'etc',   label: '기타' },
+];
+// 수익률(수동, 누적) 대상 = 개별주식/ETF/코인. 채권·기타는 제외
+const RATE_SUBTYPES = ['stock', 'etf', 'coin'];
+function subtypeOf(it) {
+  return it.invest_subtype || (it.name === '기타' ? 'etc' : 'stock');
+}
+function subtypeLabel(key) {
+  const s = INVEST_SUBTYPES.find(x => x.key === key);
+  return s ? s.label : key;
+}
 
 const assetState = {
   year: new Date().getFullYear(),
@@ -1681,6 +1726,7 @@ const assetInputState = {
 };
 const loanEditState = { items: [] };
 let _addAssetType = 'savings';
+let _addInvestSubtype = 'stock';
 
 function toYM(y, m) { return `${y}-${String(m).padStart(2, '0')}`; }
 function prevMonthYM(ym) {
@@ -1798,9 +1844,9 @@ function renderAssetDonut(items, total) {
 
   center.innerHTML = `<div class="asset-comp-center-label">총 자산</div><div class="asset-comp-center-val">${fmt(total)}</div>`;
 
-  // 투자 수익률 가중평균 계산 (기타 제외, return_rate 있는 항목만)
+  // 투자 수익률 가중평균 (개별주식/ETF/코인만, 채권·기타 제외, return_rate 있는 항목만)
   const investItems = items.filter(it => it.type === 'investment');
-  const rateItems = investItems.filter(it => it.name !== '기타' && it.return_rate != null);
+  const rateItems = investItems.filter(it => RATE_SUBTYPES.includes(subtypeOf(it)) && it.return_rate != null);
   const rateWeightSum = rateItems.reduce((s, it) => s + it.amount, 0);
   const weightedRate = rateWeightSum > 0
     ? rateItems.reduce((s, it) => s + it.amount * it.return_rate, 0) / rateWeightSum
@@ -1846,23 +1892,44 @@ function renderAssetDonut(items, total) {
     if (isOpen && subitems.length > 0) {
       const sub = document.createElement('div');
       sub.className = 'asset-leg-sub';
-      subitems.forEach(it => {
-        const row = document.createElement('div');
-        row.className = 'asset-leg-sub-item';
-        // 투자 항목: 수익률 표시
-        let subRate = '';
-        if (t.key === 'investment' && it.return_rate != null && it.name !== '기타') {
-          const s = it.return_rate >= 0 ? '+' : '';
-          const c = it.return_rate >= 0 ? 'rate-pos' : 'rate-neg';
-          subRate = `<span class="asset-leg-rate ${c}" style="font-size:11px">${s}${it.return_rate}%</span>`;
-        }
-        row.innerHTML = `<span class="asset-leg-sub-name">${escHtml(it.name)}</span>${subRate}<span class="asset-leg-sub-amt">${fmt(it.amount)}</span>`;
-        sub.appendChild(row);
-      });
+      if (t.key === 'investment') {
+        // 투자: 세부 유형별 소그룹으로 나눠서 표시
+        INVEST_SUBTYPES.forEach(st => {
+          const stItems = subitems.filter(it => subtypeOf(it) === st.key);
+          if (stItems.length === 0) return;
+          const stTotal = stItems.reduce((s, it) => s + it.amount, 0);
+          const gh = document.createElement('div');
+          gh.className = 'asset-leg-subgroup-head';
+          gh.innerHTML = `<span>${st.label}</span><span>${fmt(stTotal)}</span>`;
+          sub.appendChild(gh);
+          stItems.forEach(it => sub.appendChild(buildAssetLegSubRow(it, st.key)));
+        });
+      } else {
+        subitems.forEach(it => sub.appendChild(buildAssetLegSubRow(it, null)));
+      }
       div.appendChild(sub);
     }
     legend.appendChild(div);
   });
+}
+
+// 자산 구성 아코디언 하위 항목 행 (투자 세부유형별 부가정보 표시)
+function buildAssetLegSubRow(it, subtype) {
+  const row = document.createElement('div');
+  row.className = 'asset-leg-sub-item';
+  let extra = '';
+  if (subtype && RATE_SUBTYPES.includes(subtype) && it.return_rate != null) {
+    const s = it.return_rate >= 0 ? '+' : '';
+    const c = it.return_rate >= 0 ? 'rate-pos' : 'rate-neg';
+    extra = `<span class="asset-leg-rate ${c}" style="font-size:11px">${s}${it.return_rate}%</span>`;
+  } else if (subtype === 'bond') {
+    const parts = [];
+    if (it.maturity_date) parts.push(`만기 ${it.maturity_date}`);
+    if (it.interest_rate != null) parts.push(`${it.interest_rate}%`);
+    if (parts.length) extra = `<span class="asset-leg-bond-meta">${parts.join(' · ')}</span>`;
+  }
+  row.innerHTML = `<span class="asset-leg-sub-name">${escHtml(it.name)}</span>${extra}<span class="asset-leg-sub-amt">${fmt(it.amount)}</span>`;
+  return row;
 }
 
 function renderAssetHistoryChart() {
@@ -1999,12 +2066,18 @@ async function loadAssetInputData() {
     assetInputState.prevNames = new Set(prev.map(p => p.name));
     assetInputState.hasPrevData = prev.length > 0;
     const source = curr.length > 0 ? curr : prev;
-    assetInputState.items = source.map(it => ({
-      type: it.type, name: it.name, amount: it.amount,
-      quantity: it.type === 'investment' ? (it.quantity ?? null) : null,
-      return_rate: it.type === 'investment' ? (it.return_rate ?? null) : null,
-      isNew: curr.length > 0 && !assetInputState.prevNames.has(it.name),
-    }));
+    assetInputState.items = source.map(it => {
+      const isInvest = it.type === 'investment';
+      return {
+        type: it.type, name: it.name, amount: it.amount,
+        invest_subtype: isInvest ? subtypeOf(it) : null,
+        quantity: isInvest ? (it.quantity ?? null) : null,
+        return_rate: isInvest ? (it.return_rate ?? null) : null,
+        maturity_date: isInvest ? (it.maturity_date ?? null) : null,
+        interest_rate: isInvest ? (it.interest_rate ?? null) : null,
+        isNew: curr.length > 0 && !assetInputState.prevNames.has(it.name),
+      };
+    });
     const noData = source.length === 0;
     document.getElementById('asset-no-prev-msg').style.display = noData ? '' : 'none';
     renderAssetInputForm();
@@ -2078,47 +2151,82 @@ function renderAssetInputForm() {
       empty.className = 'asset-group-empty-msg'; empty.textContent = '종목이 없어요';
       group.appendChild(empty);
     } else {
-      typeItems.forEach(item => {
-        const idx = assetInputState.items.indexOf(item);
-        const isEtc = item.name === '기타';
-        const el = document.createElement('div');
-        el.className = 'invest-item';
-        el.innerHTML = `
-          <div class="invest-item-top">
-            <span class="invest-item-name">${escHtml(item.name)}${item.isNew ? '<span class="asset-row-new-badge">NEW</span>' : ''}</span>
-            <button class="asset-row-del-btn" onclick="deleteAssetInputItem(${idx})">✕</button>
-          </div>
-          <div class="invest-item-fields">
-            <div class="invest-field">
-              <span class="invest-field-label">수량 (선택)</span>
-              <input type="text" value="${item.quantity ?? ''}" placeholder="-" inputmode="decimal"
-                ${isEtc ? 'disabled style="opacity:.4"' : ''}
-                oninput="assetInputState.items[${idx}].quantity=this.value===''?null:parseFloat(this.value)||0">
-              <span class="invest-field-unit">&nbsp;</span>
-            </div>
-            <div class="invest-field">
-              <span class="invest-field-label">평가액 *</span>
-              <input type="text" value="${fmtInput(item.amount)}" placeholder="0" inputmode="numeric"
-                oninput="formatAmount(this);assetInputState.items[${idx}].amount=parseAmt(this.value);updateAssetGroupTotals()">
-              <span class="invest-field-unit">원</span>
-            </div>
-            <div class="invest-field">
-              <span class="invest-field-label">수익률 (선택)</span>
-              <div class="rate-input-wrap">
-                <button class="rate-sign-btn" ${isEtc ? 'disabled style="opacity:.4"' : ''}
-                  onclick="toggleRateSign(this, ${idx})">${(item.return_rate ?? 0) < 0 ? '−' : '＋'}</button>
-                <input type="text" value="${item.return_rate != null ? Math.abs(item.return_rate) : ''}" placeholder="${isEtc ? '-' : '0.0'}" inputmode="decimal"
-                  ${isEtc ? 'disabled style="opacity:.4"' : ''}
-                  oninput="updateRateValue(this, ${idx})">
-              </div>
-              <span class="invest-field-unit">%</span>
-            </div>
-          </div>`;
-        group.appendChild(el);
+      // 세부 유형별 소그룹으로 나눠 렌더
+      INVEST_SUBTYPES.forEach(st => {
+        const stItems = typeItems.filter(it => subtypeOf(it) === st.key);
+        if (stItems.length === 0) return;
+        const sub = document.createElement('div');
+        sub.className = 'invest-subgroup';
+        sub.innerHTML = `<div class="invest-subgroup-label">${st.label}</div>`;
+        stItems.forEach(item => {
+          const idx = assetInputState.items.indexOf(item);
+          sub.appendChild(buildInvestItemRow(item, idx, st.key));
+        });
+        group.appendChild(sub);
       });
     }
     container.appendChild(group);
   }
+}
+
+// 투자 종목 입력 행 (세부 유형별 필드 분기)
+function buildInvestItemRow(item, idx, subtype) {
+  const el = document.createElement('div');
+  el.className = 'invest-item';
+  const nameHtml = `<span class="invest-item-name">${escHtml(item.name)}${item.isNew ? '<span class="asset-row-new-badge">NEW</span>' : ''}</span>`;
+  const delBtn = `<button class="asset-row-del-btn" onclick="deleteAssetInputItem(${idx})">✕</button>`;
+  const amountField = `
+    <div class="invest-field">
+      <span class="invest-field-label">평가액 *</span>
+      <input type="text" value="${fmtInput(item.amount)}" placeholder="0" inputmode="numeric"
+        oninput="formatAmount(this);assetInputState.items[${idx}].amount=parseAmt(this.value);updateAssetGroupTotals()">
+      <span class="invest-field-unit">원</span>
+    </div>`;
+
+  let fields = '';
+  if (subtype === 'bond') {
+    // 채권: 평가액 / 만기일 / 이자율
+    fields = `
+      ${amountField}
+      <div class="invest-field">
+        <span class="invest-field-label">만기일 (선택)</span>
+        <input type="date" value="${item.maturity_date ?? ''}"
+          oninput="assetInputState.items[${idx}].maturity_date=this.value||null">
+        <span class="invest-field-unit">&nbsp;</span>
+      </div>
+      <div class="invest-field">
+        <span class="invest-field-label">이자율 (선택)</span>
+        <input type="text" value="${item.interest_rate ?? ''}" placeholder="0.0" inputmode="decimal"
+          oninput="assetInputState.items[${idx}].interest_rate=this.value===''?null:parseFloat(this.value)||0">
+        <span class="invest-field-unit">%</span>
+      </div>`;
+  } else if (subtype === 'etc') {
+    // 기타: 평가액만
+    fields = amountField;
+  } else {
+    // 개별주식/ETF/코인: 수량 / 평가액 / 수익률
+    fields = `
+      <div class="invest-field">
+        <span class="invest-field-label">수량 (선택)</span>
+        <input type="text" value="${item.quantity ?? ''}" placeholder="-" inputmode="decimal"
+          oninput="assetInputState.items[${idx}].quantity=this.value===''?null:parseFloat(this.value)||0">
+        <span class="invest-field-unit">&nbsp;</span>
+      </div>
+      ${amountField}
+      <div class="invest-field">
+        <span class="invest-field-label">수익률 (선택)</span>
+        <div class="rate-input-wrap">
+          <button class="rate-sign-btn" onclick="toggleRateSign(this, ${idx})">${(item.return_rate ?? 0) < 0 ? '−' : '＋'}</button>
+          <input type="text" value="${item.return_rate != null ? Math.abs(item.return_rate) : ''}" placeholder="0.0" inputmode="decimal"
+            oninput="updateRateValue(this, ${idx})">
+        </div>
+        <span class="invest-field-unit">%</span>
+      </div>`;
+  }
+  el.innerHTML = `
+    <div class="invest-item-top">${nameHtml}${delBtn}</div>
+    <div class="invest-item-fields">${fields}</div>`;
+  return el;
 }
 
 function toggleRateSign(btn, idx) {
@@ -2152,8 +2260,11 @@ async function saveAssetSnapshot() {
   const ym = toYM(assetInputState.year, assetInputState.month);
   const items = assetInputState.items.map(it => ({
     type: it.type, name: it.name, amount: it.amount,
+    invest_subtype: it.type === 'investment' ? subtypeOf(it) : null,
     quantity: it.quantity ?? null,
     return_rate: it.return_rate ?? null,
+    maturity_date: it.maturity_date ?? null,
+    interest_rate: it.interest_rate ?? null,
   }));
   try {
     await api('PUT', '/api/assets/snapshot', { year_month: ym, items });
@@ -2166,31 +2277,57 @@ async function saveAssetSnapshot() {
 // =============================================
 // 자산 항목 추가 모달
 // =============================================
-function onNewAssetNameInput() {
-  const isInvest = assetInputState.activeTab === 'investment';
-  const isEtc = document.getElementById('new-asset-name').value.trim() === '기타';
-  if (isInvest) {
-    const qtyInput = document.getElementById('new-asset-qty');
-    const rateInput = document.getElementById('new-asset-rate');
-    qtyInput.disabled = isEtc; qtyInput.style.opacity = isEtc ? '.4' : '';
-    rateInput.disabled = isEtc; rateInput.style.opacity = isEtc ? '.4' : '';
-    if (isEtc) { qtyInput.value = ''; rateInput.value = ''; }
-  }
+function onNewAssetNameInput() { /* 유형은 세부유형 탭으로 결정 — 이름 기반 분기 없음 */ }
+
+// 추가 모달: 세부유형 탭 렌더
+function renderAddInvestSubtypeTabs() {
+  const el = document.getElementById('add-invest-subtype-tabs');
+  el.innerHTML = '';
+  INVEST_SUBTYPES.forEach(st => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'invest-subtype-tab' + (_addInvestSubtype === st.key ? ' selected' : '');
+    btn.textContent = st.label;
+    btn.onclick = () => setAddInvestSubtype(st.key);
+    el.appendChild(btn);
+  });
+}
+
+// 세부유형 선택 시 조건부 필드 표시 전환
+function setAddInvestSubtype(key) {
+  _addInvestSubtype = key;
+  renderAddInvestSubtypeTabs();
+  const isBond = key === 'bond';
+  const isEtc = key === 'etc';
+  const rateFields = document.getElementById('add-invest-rate-fields');
+  const bondFields = document.getElementById('add-invest-bond-fields');
+  const etcNote = document.getElementById('add-invest-etc-note');
+  const nameLabel = document.querySelector('#add-asset-modal .form-row label');
+  rateFields.style.display = (isBond || isEtc) ? 'none' : '';
+  bondFields.style.display = isBond ? '' : 'none';
+  etcNote.style.display = isEtc ? '' : 'none';
+  // 채권은 '채권명' 안내
+  document.getElementById('new-asset-name').placeholder =
+    isBond ? '예) 국고채 3년' : (key === 'coin' ? '예) 비트코인' : '예) 삼성전자, TIGER나스닥');
 }
 
 function openAddAssetItem() {
   const isInvest = assetInputState.activeTab === 'investment';
   _addAssetType = isInvest ? 'investment' : 'savings';
+  _addInvestSubtype = 'stock';
   document.getElementById('new-asset-name').value = '';
   document.getElementById('new-asset-amount').value = '';
   document.getElementById('new-asset-qty').value = '';
   document.getElementById('new-asset-rate').value = '';
   document.getElementById('new-asset-rate-sign').textContent = '＋';
+  document.getElementById('new-asset-maturity').value = '';
+  document.getElementById('new-asset-interest').value = '';
   document.getElementById('add-asset-box-title').textContent = isInvest ? '종목 추가' : '항목 추가';
-  // 투자 탭: 타입 버튼 숨기고 투자 필드 표시
+  // 투자 탭: 일반 타입 버튼 숨기고 투자(세부유형) 필드 표시
   document.getElementById('add-asset-type-btns').style.display = isInvest ? 'none' : '';
   document.getElementById('add-invest-extra').style.display = isInvest ? '' : 'none';
-  if (!isInvest) renderAddAssetTypeBtns();
+  if (isInvest) { renderAddInvestSubtypeTabs(); setAddInvestSubtype('stock'); }
+  else renderAddAssetTypeBtns();
   document.getElementById('add-asset-modal').classList.add('visible');
   setTimeout(() => document.getElementById('new-asset-name').focus(), 100);
 }
@@ -2200,7 +2337,8 @@ function closeAddAssetItem() {
 function renderAddAssetTypeBtns() {
   const el = document.getElementById('add-asset-type-btns');
   el.innerHTML = '';
-  ASSET_TYPES.forEach(t => {
+  // 일반 자산 입력에는 예금·적금 / 현금·예수금 만 노출 (투자는 별도 진입점)
+  ASSET_TYPES.filter(t => t.key !== 'investment').forEach(t => {
     const btn = document.createElement('button');
     btn.className = 'add-asset-type-btn' + (_addAssetType === t.key ? ' selected' : '');
     btn.style.background = _addAssetType === t.key ? t.color : '';
@@ -2230,14 +2368,23 @@ function confirmAddAssetItem() {
     return;
   }
   const isInvest = assetInputState.activeTab === 'investment';
-  const isEtc = name === '기타';
+  const subtype = isInvest ? _addInvestSubtype : null;
+  const rateEligible = RATE_SUBTYPES.includes(subtype);
+  const isBond = subtype === 'bond';
+
   const qtyVal = document.getElementById('new-asset-qty').value.trim();
   const rateVal = document.getElementById('new-asset-rate').value.trim();
   const rateSign = document.getElementById('new-asset-rate-sign').textContent === '−' ? -1 : 1;
+  const maturityVal = document.getElementById('new-asset-maturity').value || null;
+  const interestVal = document.getElementById('new-asset-interest').value.trim();
+
   const newItem = {
     type: _addAssetType, name, amount, isNew: true,
-    quantity: (isInvest && !isEtc && qtyVal !== '') ? parseFloat(qtyVal) : null,
-    return_rate: (isInvest && !isEtc && rateVal !== '') ? rateSign * (Math.abs(parseFloat(rateVal)) || 0) : null,
+    invest_subtype: subtype,
+    quantity: (rateEligible && qtyVal !== '') ? parseFloat(qtyVal) : null,
+    return_rate: (rateEligible && rateVal !== '') ? rateSign * (Math.abs(parseFloat(rateVal)) || 0) : null,
+    maturity_date: isBond ? maturityVal : null,
+    interest_rate: (isBond && interestVal !== '') ? parseFloat(interestVal) : null,
   };
   assetInputState.items.push(newItem);
   closeAddAssetItem();
@@ -2256,7 +2403,12 @@ function assetDupKeepBoth(btn, name, amount) {
   btn.closest('.dup-popup-overlay').remove();
   let n = 2;
   while (assetInputState.items.some(it => it.name === `${name} ${n}`)) n++;
-  assetInputState.items.push({ type: _addAssetType, name: `${name} ${n}`, amount, isNew: true, quantity: null, return_rate: null });
+  const isInvest = assetInputState.activeTab === 'investment';
+  assetInputState.items.push({
+    type: _addAssetType, name: `${name} ${n}`, amount, isNew: true,
+    invest_subtype: isInvest ? _addInvestSubtype : null,
+    quantity: null, return_rate: null, maturity_date: null, interest_rate: null,
+  });
   closeAddAssetItem();
   renderAssetInputForm();
 }

@@ -56,14 +56,24 @@ app.put('/api/assets/snapshot', requireAppToken, async (req, res) => {
     .from('asset_snapshots').select('id').eq('year_month', year_month);
   if (selErr) return res.status(500).json({ error: selErr.message });
 
-  const rows = items.map(item => ({
-    year_month,
-    type: item.type,
-    name: item.name,
-    amount: parseInt(item.amount) || 0,
-    quantity: item.quantity != null ? parseFloat(item.quantity) : null,
-    return_rate: item.return_rate != null ? parseFloat(item.return_rate) : null,
-  }));
+  const rows = items.map(item => {
+    const isInvest = item.type === 'investment';
+    const subtype = isInvest ? (item.invest_subtype || (item.name === '기타' ? 'etc' : 'stock')) : null;
+    // 수량·수익률은 개별주식/ETF/코인 에서만, 만기일·이자율은 채권 에서만 유효
+    const rateEligible = subtype === 'stock' || subtype === 'etf' || subtype === 'coin';
+    const isBond = subtype === 'bond';
+    return {
+      year_month,
+      type: item.type,
+      name: item.name,
+      amount: parseInt(item.amount) || 0,
+      invest_subtype: subtype,
+      quantity: rateEligible && item.quantity != null && item.quantity !== '' ? parseFloat(item.quantity) : null,
+      return_rate: rateEligible && item.return_rate != null && item.return_rate !== '' ? parseFloat(item.return_rate) : null,
+      maturity_date: isBond && item.maturity_date ? item.maturity_date : null,
+      interest_rate: isBond && item.interest_rate != null && item.interest_rate !== '' ? parseFloat(item.interest_rate) : null,
+    };
+  });
   const { error: insErr } = await supabase.from('asset_snapshots').insert(rows);
   if (insErr) return res.status(500).json({ error: insErr.message });
 

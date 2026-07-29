@@ -26,6 +26,20 @@ Node.js + Express + Supabase 기반 가계부 웹 앱 (PWA 지원)
 
 Supabase 대시보드 → **SQL Editor** → `supabase/schema.sql` 내용 전체 붙여넣기 후 실행
 
+### 1-2b. 마이그레이션 (기존 사용자 필수)
+
+DB 스키마를 바꾸는 변경은 **코드 배포만으로 적용되지 않습니다.** 아래 SQL을
+Supabase 대시보드 → **SQL Editor** 에서 **직접 실행**해야 합니다. 각 파일은
+여러 번 실행해도 안전하며 기존 데이터를 보존합니다.
+
+| 파일 | 내용 |
+|---|---|
+| `supabase/migrations/0001_investment_subtypes.sql` | 투자 자산 세부 유형(`invest_subtype`) + 채권 필드(`maturity_date`, `interest_rate`) 추가. 기존 투자 데이터는 개별주식(단, `기타`는 그대로)으로 이관 |
+
+> 실행 후 자산관리 화면에서 기존 투자 항목을 개별주식 → ETF/채권/코인으로
+> **하나씩 수동 재분류**합니다 (자동 재분류 없음). 도넛/추이 차트는 투자를
+> 하나로 합산해 그대로 표시됩니다.
+
 ### 1-3. 인증 설정
 
 - **Authentication → Providers → Email** : Enable 확인
