@@ -582,8 +582,11 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 /* 투자 종목 행 */
 .invest-item { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; }
 .invest-item:last-child { border-bottom: none; }
-.invest-item-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.invest-item-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .invest-item-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+.invest-item-name-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; padding: 6px 8px; }
+.invest-subtype-select { flex-shrink: 0; width: auto; font-size: 12px; font-weight: 600; padding: 6px 6px; color: var(--primary-dark); }
+.asset-row-name-input { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; padding: 8px 10px; }
 .invest-item-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
 .invest-field { display: flex; flex-direction: column; gap: 3px; }
 .invest-field input[type="date"] { font-size: 12px; font-weight: 600; padding: 6px 4px; text-align: center; }
@@ -2123,7 +2126,8 @@ function renderAssetInputForm() {
           const row = document.createElement('div');
           row.className = 'asset-row';
           row.innerHTML = `
-            <div class="asset-row-name">${escHtml(item.name)}${item.isNew ? '<span class="asset-row-new-badge">NEW</span>' : ''}</div>
+            <input class="asset-row-name-input" type="text" value="${escHtml(item.name)}" placeholder="항목명" lang="ko" inputmode="text"
+              oninput="assetInputState.items[${idx}].name=this.value">
             <div class="asset-row-amount-wrap">
               <input type="text" value="${fmtInput(item.amount)}" placeholder="0" inputmode="numeric"
                 oninput="formatAmount(this);assetInputState.items[${idx}].amount=parseAmt(this.value);updateAssetGroupTotals()">
@@ -2169,11 +2173,15 @@ function renderAssetInputForm() {
   }
 }
 
-// 투자 종목 입력 행 (세부 유형별 필드 분기)
+// 투자 종목 입력 행 (세부 유형별 필드 분기, 이름·유형 수정 가능)
 function buildInvestItemRow(item, idx, subtype) {
   const el = document.createElement('div');
   el.className = 'invest-item';
-  const nameHtml = `<span class="invest-item-name">${escHtml(item.name)}${item.isNew ? '<span class="asset-row-new-badge">NEW</span>' : ''}</span>`;
+  const nameHtml = `<input class="invest-item-name-input" type="text" value="${escHtml(item.name)}" placeholder="종목명" lang="ko" inputmode="text"
+    oninput="assetInputState.items[${idx}].name=this.value">`;
+  const subtypeSel = `<select class="invest-subtype-select" onchange="changeInvestSubtype(${idx}, this.value)">
+    ${INVEST_SUBTYPES.map(st => `<option value="${st.key}" ${st.key === subtype ? 'selected' : ''}>${st.label}</option>`).join('')}
+  </select>`;
   const delBtn = `<button class="asset-row-del-btn" onclick="deleteAssetInputItem(${idx})">✕</button>`;
   const amountField = `
     <div class="invest-field">
@@ -2224,9 +2232,20 @@ function buildInvestItemRow(item, idx, subtype) {
       </div>`;
   }
   el.innerHTML = `
-    <div class="invest-item-top">${nameHtml}${delBtn}</div>
+    <div class="invest-item-top">${nameHtml}${subtypeSel}${delBtn}</div>
     <div class="invest-item-fields">${fields}</div>`;
   return el;
+}
+
+// 기존 항목의 세부 유형 변경 (재분류) — 유형에 안 맞는 필드는 정리
+function changeInvestSubtype(idx, key) {
+  const item = assetInputState.items[idx];
+  item.invest_subtype = key;
+  const rateEligible = RATE_SUBTYPES.includes(key);
+  const isBond = key === 'bond';
+  if (!rateEligible) { item.quantity = null; item.return_rate = null; }
+  if (!isBond) { item.maturity_date = null; item.interest_rate = null; }
+  renderAssetInputForm();
 }
 
 function toggleRateSign(btn, idx) {
