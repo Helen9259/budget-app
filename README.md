@@ -180,7 +180,8 @@ vercel dev                # → http://localhost:3000, 실제 함수 라우팅 �
 5. 정적 프론트(`public/`)는 `/`, 투자 일지는 `/investment/` 에서 서빙됩니다.
 
 > **참고**: Supabase 스키마(`supabase/*.sql`)는 배포와 무관하게 사전에 SQL Editor에서
-> 적용되어 있어야 합니다. `APP_PASSWORD` 미설정 시 코드 기본값(`950511`)이 사용됩니다.
+> 적용되어 있어야 합니다. `APP_PASSWORD`(또는 `BUDGET_SECRET`)는 반드시 환경변수로
+> 설정해야 하며, 미설정 시 로그인이 불가능합니다 (하드코딩 기본값 없음).
 
 ---
 
