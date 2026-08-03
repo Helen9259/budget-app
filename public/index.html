@@ -2929,8 +2929,16 @@ async function loadFixedExpenses() {
   } catch { state.fixedExpenses = []; }
 }
 
+// 동시 호출(앱 시작 + 탭 진입)이 병렬로 생성 요청을 보내 중복이 생기던 문제 방지.
+// 진행 중인 요청이 있으면 그 Promise를 재사용해 한 번만 실행되도록 보장한다.
+let _genFixedPromise = null;
 async function generateFixedExpenses() {
-  try { await api('POST', '/api/fixed-expenses/generate'); } catch { /* silent */ }
+  if (_genFixedPromise) return _genFixedPromise;
+  _genFixedPromise = (async () => {
+    try { await api('POST', '/api/fixed-expenses/generate'); } catch { /* silent */ }
+  })();
+  try { await _genFixedPromise; }
+  finally { _genFixedPromise = null; }
 }
 
 function changeMonth(delta) {

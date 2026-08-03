@@ -74,6 +74,7 @@ app.post('/api/fixed-expenses/generate', requireAppToken, async (req, res) => {
           fixed_expense_id: fe.id,
         }]);
         if (!insErr) { generated++; lastConfirmedMonth = month; }
+        else if (insErr.code === '23505') { lastConfirmedMonth = month; } // unique 위반 = 동시 요청이 이미 삽입함 → 존재로 간주하고 계속
         else break;
       } else {
         lastConfirmedMonth = month;
