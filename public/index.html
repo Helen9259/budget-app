@@ -1645,15 +1645,20 @@ function enterApp() {
   hideSessionLoading();
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-screen').classList.add('visible');
-  // 병렬 초기화
-  Promise.all([
-    loadCategories(),
-    loadPaymentMethods(),
-    loadCards(),
-    generateFixedExpenses(),
-  ]).then(() => {
-    loadMonth();
-    loadFixedExpenses();
+  // 병렬 초기화 — 캘린더(loadMonth)를 generate 뒤에 묶지 않고 즉시 로드해 체감 지연을 줄인다.
+  // 각 로더는 완료 시 관련 부분을 스스로 다시 렌더(loadCardUsage→카드요약, loadFixedExpenses→캘린더).
+  loadCategories();
+  loadPaymentMethods();
+  loadCards();
+  loadFixedExpenses();
+  loadMonth();
+  // 고정지출 자동생성은 백그라운드로. 실제로 새 거래가 생겼고 아직 가계부(현재 월)를 보고 있을 때만 새로고침.
+  const genY = state.year, genM = state.month;
+  generateFixedExpenses().then(r => {
+    if (r && r.generated > 0 && _currentTab === 'ledger'
+        && state.year === genY && state.month === genM) {
+      loadMonth();
+    }
   });
 }
 
@@ -1683,7 +1688,14 @@ function showTab(tab) {
     loadAssets();
   }
   if (tab === 'ledger') {
-    generateFixedExpenses().then(() => loadMonth());
+    loadMonth();
+    const genY = state.year, genM = state.month;
+    generateFixedExpenses().then(r => {
+      if (r && r.generated > 0 && _currentTab === 'ledger'
+          && state.year === genY && state.month === genM) {
+        loadMonth();
+      }
+    });
   }
 }
 
@@ -2921,12 +2933,16 @@ async function loadCardUsage() {
   try {
     state.cardUsage = await api('GET', `/api/credit-cards/usage?year=${state.year}&month=${state.month}`);
   } catch { state.cardUsage = []; }
+  // 병렬 로드 시 loadMonth 보다 늦게 끝날 수 있으므로 카드 요약을 다시 렌더
+  if (_currentTab === 'ledger') renderCardSummary();
 }
 
 async function loadFixedExpenses() {
   try {
     state.fixedExpenses = await api('GET', '/api/fixed-expenses');
   } catch { state.fixedExpenses = []; }
+  // 미래 날짜 고정지출 점은 이 목록에 의존하므로, 캘린더가 이미 그려졌다면 다시 렌더
+  if (_currentTab === 'ledger' && _currentSubTab === 'calendar' && state.transactions) renderCalendar();
 }
 
 // 동시 호출(앱 시작 + 탭 진입)이 병렬로 생성 요청을 보내 중복이 생기던 문제 방지.
@@ -2935,9 +2951,9 @@ let _genFixedPromise = null;
 async function generateFixedExpenses() {
   if (_genFixedPromise) return _genFixedPromise;
   _genFixedPromise = (async () => {
-    try { await api('POST', '/api/fixed-expenses/generate'); } catch { /* silent */ }
+    try { return await api('POST', '/api/fixed-expenses/generate'); } catch { return null; }
   })();
-  try { await _genFixedPromise; }
+  try { return await _genFixedPromise; }
   finally { _genFixedPromise = null; }
 }
 

@@ -36,49 +36,44 @@ app.post('/api/fixed-expenses/generate', requireAppToken, async (req, res) => {
 
     let lastConfirmedMonth = fe.last_generated_month || null;
 
-    for (const month of monthsToGen) {
+    // 생성 대상 월 → 날짜 매핑
+    const monthDate = {};
+    monthsToGen.forEach(month => {
       const [y, mo] = month.split('-').map(Number);
       const lastDay = new Date(y, mo, 0).getDate();
       const day = Math.min(fe.day_of_month, lastDay);
-      const date = `${month}-${String(day).padStart(2, '0')}`;
+      monthDate[month] = `${month}-${String(day).padStart(2, '0')}`;
+    });
+    const dateList = Object.values(monthDate);
 
-      let existing = null;
-      const { data: byId } = await supabase
-        .from('transactions').select('id')
-        .eq('fixed_expense_id', fe.id)
-        .eq('date', date)
-        .maybeSingle();
-      if (byId) {
-        existing = byId;
-      } else {
-        const { data: byContent } = await supabase
-          .from('transactions').select('id')
-          .eq('content', fe.name)
-          .eq('date', date)
-          .eq('is_fixed', true)
-          .maybeSingle();
-        existing = byContent;
-      }
+    // 존재 여부 일괄 조회 (기존 per-month maybeSingle → 2쿼리로 축소).
+    // 두 판별 경로 모두 유지: (1) fixed_expense_id 일치, (2) content+is_fixed 폴백(레거시).
+    // content 는 특수문자(콤마·괄호 등) 위험이 있어 or() 대신 별도 eq 쿼리로 분리.
+    const [{ data: byIdRows }, { data: byContentRows }] = await Promise.all([
+      supabase.from('transactions').select('date').eq('fixed_expense_id', fe.id).in('date', dateList),
+      supabase.from('transactions').select('date').eq('content', fe.name).eq('is_fixed', true).in('date', dateList),
+    ]);
+    const existingDates = new Set([...(byIdRows || []), ...(byContentRows || [])].map(r => r.date));
 
-      if (!existing) {
-        const { error: insErr } = await supabase.from('transactions').insert([{
-          date,
-          type: 'expense',
-          amount: fe.amount,
-          content: fe.name,
-          category: fe.category,
-          subcategory: fe.subcategory || null,
-          payment_method: fe.payment_method || null,
-          credit_card_id: fe.credit_card_id || null,
-          is_fixed: true,
-          fixed_expense_id: fe.id,
-        }]);
-        if (!insErr) { generated++; lastConfirmedMonth = month; }
-        else if (insErr.code === '23505') { lastConfirmedMonth = month; } // unique 위반 = 동시 요청이 이미 삽입함 → 존재로 간주하고 계속
-        else break;
-      } else {
-        lastConfirmedMonth = month;
-      }
+    for (const month of monthsToGen) {
+      const date = monthDate[month];
+      if (existingDates.has(date)) { lastConfirmedMonth = month; continue; }
+
+      const { error: insErr } = await supabase.from('transactions').insert([{
+        date,
+        type: 'expense',
+        amount: fe.amount,
+        content: fe.name,
+        category: fe.category,
+        subcategory: fe.subcategory || null,
+        payment_method: fe.payment_method || null,
+        credit_card_id: fe.credit_card_id || null,
+        is_fixed: true,
+        fixed_expense_id: fe.id,
+      }]);
+      if (!insErr) { generated++; lastConfirmedMonth = month; existingDates.add(date); }
+      else if (insErr.code === '23505') { lastConfirmedMonth = month; } // unique 위반 = 동시 요청이 이미 삽입 → 존재로 간주하고 계속
+      else break;
     }
 
     if (lastConfirmedMonth && lastConfirmedMonth !== fe.last_generated_month) {
