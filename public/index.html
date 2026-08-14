@@ -4431,25 +4431,6 @@ async function exportCSV() {
 // =============================================
 let _csvImportRows = [];
 
-// 따옴표("")·쉼표를 처리하는 CSV 한 줄 파서
-function parseCsvLine(line) {
-  const out = []; let cur = ''; let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (inQ) {
-      if (c === '"') {
-        if (line[i + 1] === '"') { cur += '"'; i++; }
-        else inQ = false;
-      } else cur += c;
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',') { out.push(cur); cur = ''; }
-      else cur += c;
-    }
-  }
-  out.push(cur);
-  return out;
-}
 
 function onCsvFileSelected(input) {
   const file = input.files && input.files[0];
@@ -4461,12 +4442,34 @@ function onCsvFileSelected(input) {
   reader.readAsText(file, 'utf-8');
 }
 
-function parseAndPreviewCsv(text) {
-  // BOM 제거 + 줄 분리 (빈 줄 무시)
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() !== '');
-  if (lines.length < 2) { showToast('데이터 행이 없습니다.'); return; }
+// 전체 텍스트를 레코드 배열로 파싱 — 따옴표 안의 줄바꿈·쉼표를 올바르게 처리
+function parseCsvRecords(text) {
+  const records = []; let row = []; let field = ''; let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\r') { /* \n 에서 처리 */ }
+      else if (c === '\n') { row.push(field); records.push(row); row = []; field = ''; }
+      else field += c;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); records.push(row); }
+  // 완전히 빈 레코드 제거
+  return records.filter(r => r.some(c => c.trim() !== ''));
+}
 
-  const header = parseCsvLine(lines[0]).map(h => h.trim());
+function parseAndPreviewCsv(text) {
+  const records = parseCsvRecords(text.replace(/^﻿/, ''));
+  if (records.length < 2) { showToast('데이터 행이 없습니다.'); return; }
+
+  const header = records[0].map(h => h.trim());
   // 열 이름으로 매핑 (순서 무관). 이 앱 표준 + 위플 가계부 별칭 지원.
   const find = aliases => { for (const a of aliases) { const i = header.indexOf(a); if (i >= 0) return i; } return -1; };
   const ci = {
@@ -4486,8 +4489,8 @@ function parseAndPreviewCsv(text) {
   }
 
   const valid = []; const errors = [];
-  for (let i = 1; i < lines.length; i++) {
-    const f = parseCsvLine(lines[i]);
+  for (let i = 1; i < records.length; i++) {
+    const f = records[i];
     const rawDate = (f[ci.date] || '').trim();
     const rawType = (f[ci.type] || '').trim();
     const rawAmount = (f[ci.amount] || '').trim();
@@ -4520,7 +4523,7 @@ function parseAndPreviewCsv(text) {
   _csvImportRows = valid;
   const summary = document.getElementById('csv-import-summary');
   summary.innerHTML =
-    `총 <b>${lines.length - 1}</b>행 중 저장 가능 <b style="color:var(--primary-dark)">${valid.length}</b>건`
+    `총 <b>${records.length - 1}</b>행 중 저장 가능 <b style="color:var(--primary-dark)">${valid.length}</b>건`
     + (errors.length ? `, 건너뜀 <b style="color:#e57373">${errors.length}</b>건 (형식 오류: ${errors.slice(0, 10).join(', ')}줄${errors.length > 10 ? ' 외' : ''})` : '');
 
   const prev = document.getElementById('csv-import-preview');
