@@ -101,4 +101,45 @@ app.delete('/api/transactions/:id', requireAppToken, async (req, res) => {
   res.json({ message: '삭제되었습니다.' });
 });
 
+// CSV 가져오기 — 표준 포맷으로 파싱된 행들을 일괄 저장
+app.post('/api/transactions/import', requireAppToken, async (req, res) => {
+  const { rows } = req.body;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return res.status(400).json({ error: '가져올 데이터가 없습니다.' });
+  if (rows.length > 5000)
+    return res.status(400).json({ error: '한 번에 최대 5000건까지 가져올 수 있습니다.' });
+
+  // 서버측 최종 검증 (클라이언트 검증을 신뢰하지 않음)
+  const clean = [];
+  for (const r of rows) {
+    const date = String(r.date || '').trim();
+    const type = r.type === 'income' ? 'income' : (r.type === 'expense' ? 'expense' : null);
+    const amount = parseInt(r.amount, 10);
+    const content = String(r.content || '').trim();
+    const category = String(r.category || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !type || !Number.isFinite(amount) || amount <= 0 || !content || !category)
+      continue; // 유효하지 않은 행은 건너뜀 (개수는 응답으로 알려줌)
+    clean.push({
+      date, type, amount, content, category,
+      subcategory: r.subcategory ? String(r.subcategory).trim() : null,
+      payment_method: r.payment_method ? String(r.payment_method).trim() : null,
+      memo: r.memo ? String(r.memo).trim() : null,
+      is_fixed: false,
+      fixed_expense_id: null,
+    });
+  }
+  if (clean.length === 0)
+    return res.status(400).json({ error: '유효한 행이 없습니다. 열 형식을 확인해주세요.' });
+
+  // 500건씩 나눠서 삽입 (서버리스 실행시간·페이로드 여유 확보)
+  let inserted = 0;
+  for (let i = 0; i < clean.length; i += 500) {
+    const chunk = clean.slice(i, i + 500);
+    const { error } = await supabase.from('transactions').insert(chunk);
+    if (error) return res.status(500).json({ error: error.message, inserted });
+    inserted += chunk.length;
+  }
+  res.json({ inserted, skipped: rows.length - inserted });
+});
+
 module.exports = app;

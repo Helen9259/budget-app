@@ -959,7 +959,13 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
             <span class="settings-item-label">전체 데이터 CSV 내보내기</span>
             <span class="settings-item-arrow">›</span>
           </div>
+          <div class="settings-item" onclick="document.getElementById('csv-import-file').click()">
+            <span class="settings-item-icon">📤</span>
+            <span class="settings-item-label">CSV 가져오기</span>
+            <span class="settings-item-arrow">›</span>
+          </div>
         </div>
+        <input type="file" id="csv-import-file" accept=".csv,text/csv" style="display:none" onchange="onCsvFileSelected(this)">
 
         <div class="settings-title">계정</div>
         <div class="settings-card">
@@ -1330,6 +1336,19 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
     <div class="confirm-btns">
       <button class="confirm-cancel" onclick="closeConfirm()">취소</button>
       <button class="confirm-ok" id="confirm-ok-btn">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV 가져오기 미리보기 모달 -->
+<div class="add-asset-modal" id="csv-import-modal" onclick="closeCsvImport()">
+  <div class="add-asset-box" onclick="event.stopPropagation()">
+    <div class="add-asset-box-title">CSV 가져오기</div>
+    <div id="csv-import-summary" style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px"></div>
+    <div id="csv-import-preview" style="max-height:200px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:12px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn-primary" style="flex:1;background:var(--surface2);color:var(--text2)" onclick="closeCsvImport()">취소</button>
+      <button class="btn-primary" style="flex:1" id="csv-import-confirm-btn" onclick="confirmCsvImport()">가져오기</button>
     </div>
   </div>
 </div>
@@ -4405,6 +4424,128 @@ async function exportCSV() {
     a.click();
     showToast('CSV 파일을 저장했습니다.');
   } catch (e) { showToast(e.message); }
+}
+
+// =============================================
+// CSV 가져오기 (표준 포맷: 날짜,구분,금액,내용,카테고리,소분류,지출수단,메모)
+// =============================================
+let _csvImportRows = [];
+
+// 따옴표("")·쉼표를 처리하는 CSV 한 줄 파서
+function parseCsvLine(line) {
+  const out = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function onCsvFileSelected(input) {
+  const file = input.files && input.files[0];
+  input.value = ''; // 같은 파일 재선택 허용
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { try { parseAndPreviewCsv(String(e.target.result)); } catch (err) { showToast('CSV를 읽지 못했습니다: ' + err.message); } };
+  reader.onerror = () => showToast('파일을 읽지 못했습니다.');
+  reader.readAsText(file, 'utf-8');
+}
+
+function parseAndPreviewCsv(text) {
+  // BOM 제거 + 줄 분리 (빈 줄 무시)
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() !== '');
+  if (lines.length < 2) { showToast('데이터 행이 없습니다.'); return; }
+
+  const header = parseCsvLine(lines[0]).map(h => h.trim());
+  // 표준 헤더 열 인덱스 찾기 (순서가 달라도 이름으로 매핑)
+  const col = name => header.indexOf(name);
+  const ci = {
+    date: col('날짜'), type: col('구분'), amount: col('금액'), content: col('내용'),
+    category: col('카테고리'), subcategory: col('소분류'), payment: col('지출수단'), memo: col('메모'),
+  };
+  if (ci.date < 0 || ci.type < 0 || ci.amount < 0 || ci.content < 0 || ci.category < 0) {
+    showToast('헤더 형식이 달라요. 첫 줄: 날짜,구분,금액,내용,카테고리,소분류,지출수단,메모');
+    return;
+  }
+
+  const valid = []; const errors = [];
+  for (let i = 1; i < lines.length; i++) {
+    const f = parseCsvLine(lines[i]);
+    const rawDate = (f[ci.date] || '').trim();
+    const rawType = (f[ci.type] || '').trim();
+    const rawAmount = (f[ci.amount] || '').trim();
+    const content = (f[ci.content] || '').trim();
+    const category = (f[ci.category] || '').trim();
+
+    // 날짜 정규화: 2026-08-25 / 2026.8.25 / 2026/08/25 → YYYY-MM-DD
+    let date = null;
+    const dm = rawDate.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+    if (dm) date = `${dm[1]}-${dm[2].padStart(2, '0')}-${dm[3].padStart(2, '0')}`;
+
+    const type = /수입|income|\+/i.test(rawType) ? 'income'
+               : /지출|expense|-/i.test(rawType) ? 'expense' : null;
+    const amount = Math.abs(parseInt(rawAmount.replace(/[^0-9-]/g, ''), 10));
+
+    if (!date || !type || !Number.isFinite(amount) || amount <= 0 || !content || !category) {
+      errors.push(i + 1); // 1-based 줄 번호
+      continue;
+    }
+    valid.push({
+      date, type, amount, content, category,
+      subcategory: ci.subcategory >= 0 ? (f[ci.subcategory] || '').trim() : '',
+      payment_method: ci.payment >= 0 ? (f[ci.payment] || '').trim() : '',
+      memo: ci.memo >= 0 ? (f[ci.memo] || '').trim() : '',
+    });
+  }
+
+  _csvImportRows = valid;
+  const summary = document.getElementById('csv-import-summary');
+  summary.innerHTML =
+    `총 <b>${lines.length - 1}</b>행 중 저장 가능 <b style="color:var(--primary-dark)">${valid.length}</b>건`
+    + (errors.length ? `, 건너뜀 <b style="color:#e57373">${errors.length}</b>건 (형식 오류: ${errors.slice(0, 10).join(', ')}줄${errors.length > 10 ? ' 외' : ''})` : '');
+
+  const prev = document.getElementById('csv-import-preview');
+  prev.innerHTML = valid.slice(0, 5).map(r =>
+    `<div style="padding:3px 0;border-bottom:1px solid var(--border)">
+       ${r.date} · <b>${r.type === 'income' ? '수입' : '지출'}</b> · ${fmt(r.amount)} · ${escHtml(r.content)} · ${escHtml(r.category)}
+     </div>`).join('') || '<div style="color:var(--text3)">미리볼 항목이 없어요</div>';
+
+  const btn = document.getElementById('csv-import-confirm-btn');
+  btn.disabled = valid.length === 0;
+  btn.style.opacity = valid.length === 0 ? '.4' : '';
+  btn.textContent = valid.length ? `${valid.length}건 가져오기` : '가져올 항목 없음';
+
+  document.getElementById('csv-import-modal').classList.add('visible');
+}
+
+function closeCsvImport() {
+  document.getElementById('csv-import-modal').classList.remove('visible');
+  _csvImportRows = [];
+}
+
+async function confirmCsvImport() {
+  if (_csvImportRows.length === 0) return;
+  const btn = document.getElementById('csv-import-confirm-btn');
+  btn.disabled = true; btn.textContent = '가져오는 중...';
+  try {
+    const r = await api('POST', '/api/transactions/import', { rows: _csvImportRows });
+    closeCsvImport();
+    showToast(`${r.inserted}건 가져왔어요${r.skipped ? ` (${r.skipped}건 제외)` : ''}.`);
+    await loadMonth();
+  } catch (e) {
+    showToast(e.message);
+    btn.disabled = false; btn.textContent = '다시 시도';
+  }
 }
 
 // =============================================
