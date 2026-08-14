@@ -4477,6 +4477,7 @@ function parseAndPreviewCsv(text) {
     category: find(['카테고리', '분류']),
     subcategory: find(['소분류', '하위 분류']),
     payment: find(['지출수단', '지불']),
+    card: find(['카드']),   // 위플: 구체 결제수단(카드명 등). 있으면 지출수단으로 우선 사용
     memo: find(['메모']),
   };
   if (ci.date < 0 || ci.type < 0 || ci.amount < 0 || ci.content < 0 || ci.category < 0) {
@@ -4506,10 +4507,12 @@ function parseAndPreviewCsv(text) {
       errors.push(i + 1); // 1-based 줄 번호
       continue;
     }
+    const paidBy = ci.payment >= 0 ? (f[ci.payment] || '').trim() : '';
+    const cardName = ci.card >= 0 ? (f[ci.card] || '').trim() : '';
     valid.push({
       date, type, amount, content, category,
       subcategory: ci.subcategory >= 0 ? (f[ci.subcategory] || '').trim() : '',
-      payment_method: ci.payment >= 0 ? (f[ci.payment] || '').trim() : '',
+      payment_method: cardName || paidBy, // 위플: 구체 결제수단(카드명)이 있으면 우선
       memo: ci.memo >= 0 ? (f[ci.memo] || '').trim() : '',
     });
   }
