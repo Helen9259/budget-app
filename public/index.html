@@ -4548,14 +4548,23 @@ function closeCsvImport() {
 async function confirmCsvImport() {
   if (_csvImportRows.length === 0) return;
   const btn = document.getElementById('csv-import-confirm-btn');
-  btn.disabled = true; btn.textContent = '가져오는 중...';
+  btn.disabled = true;
+  const rows = _csvImportRows;
+  const CHUNK = 300; // 본문 크기·타임아웃 안전을 위해 나눠서 전송
+  let inserted = 0, skipped = 0;
   try {
-    const r = await api('POST', '/api/transactions/import', { rows: _csvImportRows });
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const part = rows.slice(i, i + CHUNK);
+      btn.textContent = `가져오는 중... ${Math.min(i + CHUNK, rows.length)}/${rows.length}`;
+      const r = await api('POST', '/api/transactions/import', { rows: part });
+      inserted += r.inserted || 0;
+      skipped += r.skipped || 0;
+    }
     closeCsvImport();
-    showToast(`${r.inserted}건 가져왔어요${r.skipped ? ` (${r.skipped}건 제외)` : ''}.`);
+    showToast(`${inserted}건 가져왔어요${skipped ? ` (${skipped}건 제외)` : ''}.`);
     await loadMonth();
   } catch (e) {
-    showToast(e.message);
+    showToast(`${inserted}건까지 저장됨. 오류: ${e.message}`);
     btn.disabled = false; btn.textContent = '다시 시도';
   }
 }
