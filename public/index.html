@@ -4467,14 +4467,20 @@ function parseAndPreviewCsv(text) {
   if (lines.length < 2) { showToast('데이터 행이 없습니다.'); return; }
 
   const header = parseCsvLine(lines[0]).map(h => h.trim());
-  // 표준 헤더 열 인덱스 찾기 (순서가 달라도 이름으로 매핑)
-  const col = name => header.indexOf(name);
+  // 열 이름으로 매핑 (순서 무관). 이 앱 표준 + 위플 가계부 별칭 지원.
+  const find = aliases => { for (const a of aliases) { const i = header.indexOf(a); if (i >= 0) return i; } return -1; };
   const ci = {
-    date: col('날짜'), type: col('구분'), amount: col('금액'), content: col('내용'),
-    category: col('카테고리'), subcategory: col('소분류'), payment: col('지출수단'), memo: col('메모'),
+    date: find(['날짜', '거래일']),
+    type: find(['구분', '수입/지출']),
+    amount: find(['금액']),
+    content: find(['내용', '내역']),
+    category: find(['카테고리', '분류']),
+    subcategory: find(['소분류', '하위 분류']),
+    payment: find(['지출수단', '지불']),
+    memo: find(['메모']),
   };
   if (ci.date < 0 || ci.type < 0 || ci.amount < 0 || ci.content < 0 || ci.category < 0) {
-    showToast('헤더 형식이 달라요. 첫 줄: 날짜,구분,금액,내용,카테고리,소분류,지출수단,메모');
+    showToast('헤더를 인식하지 못했어요. 표준(날짜,구분,금액,내용,카테고리…) 또는 위플(거래일,수입/지출,…) 형식이어야 해요.');
     return;
   }
 
