@@ -2736,10 +2736,12 @@ function renderCatRank(cats, total) {
 function renderCatPrev(cat) {
   if (cat.prev_total === 0 && cat.total === 0) return '';
   const diff = cat.total - cat.prev_total;
-  if (diff === 0) return '<div class="cat-rank-prev">지난달과 동일</div>';
-  const sign = diff > 0 ? '+' : '';
-  const cls = diff > 0 ? 'diff-up' : 'diff-down';
-  return `<div class="cat-rank-prev">지난달보다 <span class="${cls}">${sign}${Math.abs(diff).toLocaleString('ko-KR')}원</span></div>`;
+  if (diff === 0) return '<div class="cat-rank-prev">전월과 동일</div>';
+  const up = diff > 0;
+  const sign = up ? '+' : '-';
+  const arrow = up ? '↑' : '↓';
+  const cls = up ? 'diff-up' : 'diff-down';
+  return `<div class="cat-rank-prev">지난달보다 <span class="${cls}">${sign}${Math.abs(diff).toLocaleString('ko-KR')}원 ${arrow}</span></div>`;
 }
 
 function toggleCatAccordion(header) {
@@ -2758,10 +2760,15 @@ function toggleCatAccordion(header) {
 }
 
 function goToSearchByCat(catName) {
+  const y = statsState.year, m = statsState.month;
   closeStats();
   openSearch();
-  // pre-set category filter
+  // 카테고리 + 통계에서 보던 월(1일~말일) 범위로 필터
   schState.cat = catName;
+  const pad = n => String(n).padStart(2, '0');
+  const lastDay = new Date(y, m, 0).getDate();
+  document.getElementById('sch-date-from').value = `${y}-${pad(m)}-01`;
+  document.getElementById('sch-date-to').value = `${y}-${pad(m)}-${pad(lastDay)}`;
   renderSchCatChips();
   doSearch();
 }
@@ -2773,6 +2780,11 @@ const schState = { cat: '', payment: '' };
 let _schDebounce = null;
 
 function openSearch() {
+  // 열 때마다 필터 초기화 (통계에서 진입 시 goToSearchByCat 이 이후에 다시 설정함)
+  schState.cat = ''; schState.payment = '';
+  document.getElementById('search-q').value = '';
+  document.getElementById('sch-date-from').value = '';
+  document.getElementById('sch-date-to').value = '';
   document.getElementById('search-panel').classList.add('visible');
   renderSchCatChips();
   renderSchPayChips();
