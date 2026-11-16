@@ -45,7 +45,15 @@ app.post('/api/transactions', requireAppToken, async (req, res) => {
 app.get('/api/transactions/search', requireAppToken, async (req, res) => {
   const { q, date_from, date_to, category, payment, amount_min, amount_max } = req.query;
   let query = supabase.from('transactions').select('*');
-  if (q) query = query.ilike('content', `%${q}%`);
+  if (q) {
+    // 내용·메모·카테고리·소분류 전체에서 부분일치 검색.
+    // PostgREST or() 문법을 깨는 특수문자(, ( ))는 공백으로 치환해 안전하게 처리.
+    const safe = String(q).replace(/[,()]/g, ' ').trim();
+    const pat = `%${safe}%`;
+    query = query.or(
+      `content.ilike.${pat},memo.ilike.${pat},category.ilike.${pat},subcategory.ilike.${pat}`
+    );
+  }
   if (date_from) query = query.gte('date', date_from);
   if (date_to) query = query.lte('date', date_to);
   if (category) query = query.eq('category', category);
