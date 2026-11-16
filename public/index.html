@@ -462,20 +462,20 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
    주간리포트
    ============================================= */
 .weekly-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 16px 16px 8px; }
-.weekly-day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 0 10px 16px; align-items: stretch; }
-.weekly-day-col { background: var(--surface); border-radius: 12px; padding: 8px 6px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-.weekly-day-col.weekend { background: #fef6ff; }
-.weekly-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text2); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; flex-shrink: 0; }
-.weekly-day-col.weekend .weekly-day-header { color: var(--primary-dark); }
-.weekly-tx-list { flex: 1; min-width: 0; }
-.weekly-tx-item { font-size: 10px; line-height: 1.3; margin-bottom: 4px; word-break: break-all; overflow: hidden; }
-.weekly-tx-content { color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.weekly-tx-amount { font-weight: 600; }
-.weekly-tx-amount.income { color: var(--income-color); }
-.weekly-tx-amount.expense { color: var(--expense-color); }
-.weekly-day-total { margin-top: auto; padding-top: 6px; border-top: 1px solid var(--border); text-align: center; flex-shrink: 0; }
-.weekly-day-total .inc { font-size: 10px; color: var(--income-color); font-weight: 600; }
-.weekly-day-total .exp { font-size: 10px; color: var(--expense-color); font-weight: 600; }
+/* 요일별 지출 막대그래프 */
+.wk-bars { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 8px 12px 0; align-items: end; }
+.wk-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.wk-bar-amt { font-size: 10px; font-weight: 700; color: var(--text2); height: 13px; white-space: nowrap; }
+.wk-bar-track { width: 60%; max-width: 32px; height: 130px; display: flex; align-items: flex-end; }
+.wk-bar-fill { width: 100%; border-radius: 6px 6px 0 0; background: #C9B8E8; transition: height .35s ease; min-height: 2px; }
+.wk-bar-col.weekend .wk-bar-fill { background: #FFB5A7; }
+.wk-bar-day { font-size: 11px; color: var(--text2); text-align: center; line-height: 1.3; margin-top: 2px; }
+.wk-bar-day b { font-weight: 700; color: var(--text); }
+.wk-bar-col.weekend .wk-bar-day { color: #e57373; }
+.wk-stat-row { display: flex; gap: 8px; padding: 14px 12px 4px; }
+.wk-stat { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; text-align: center; }
+.wk-stat-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+.wk-stat-value { font-size: 15px; font-weight: 700; color: var(--expense-color); }
 .weekly-summary { background: var(--surface); margin: 0 10px 12px; border-radius: 14px; padding: 14px; border: 1px solid var(--border); }
 .weekly-summary-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
 .weekly-cat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -483,9 +483,6 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 .weekly-cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .weekly-cat-name { color: var(--text2); }
 .weekly-cat-amt { font-weight: 600; color: var(--text); }
-.weekly-total-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
-.weekly-total-label { font-size: 13px; font-weight: 700; color: var(--text2); }
-.weekly-total-amt { font-size: 15px; font-weight: 700; color: var(--expense-color); }
 
 /* =============================================
    자산관리 탭 — 대시보드
@@ -911,10 +908,6 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
         <div id="weekly-content">
           <div class="coming-soon"><div class="coming-soon-icon">📊</div><div class="coming-soon-text">불러오는 중...</div></div>
         </div>
-        <div style="padding:16px;padding-top:8px;">
-          <button class="btn-primary" onclick="downloadWeeklyReport()" id="weekly-download-btn" style="display:none;">이미지로 저장 (1080px)</button>
-        </div>
-        <canvas id="weekly-canvas" style="display:none;"></canvas>
       </div>
     </div>
 
@@ -4245,7 +4238,6 @@ function renderWeeklyNav() {
 async function loadWeeklyReport() {
   document.getElementById('weekly-content').innerHTML =
     '<div class="coming-soon"><div class="coming-soon-icon">📊</div><div class="coming-soon-text">불러오는 중...</div></div>';
-  document.getElementById('weekly-download-btn').style.display = 'none';
   try {
     const ws = dateToStr(weeklyState.weekStart);
     weeklyState.data = await api('GET', `/api/weekly-report?week_start=${ws}`);
@@ -4268,30 +4260,25 @@ function renderWeeklyReport() {
   if (!data) return;
 
   const DAYS_KO = ['월', '화', '수', '목', '금', '토', '일'];
-  let cols = '';
+  const abbr = n => n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + '만'
+                 : (n > 0 ? Math.round(n / 1000) + '천' : '');
+  const maxExp = Math.max(...data.days.map(d => d.expense), 1);
+
+  let bars = '';
   data.days.forEach((day, i) => {
     const isWeekend = i >= 5;
     const d = new Date(day.date + 'T00:00:00');
-    const dayNum = d.getDate();
-    let txsHtml = '';
-    day.transactions.forEach(t => {
-      const isIncome = t.type === 'income';
-      const sign = isIncome ? '+' : '-';
-      txsHtml += `<div class="weekly-tx-item">
-        <div class="weekly-tx-content">${escHtml(t.content)}</div>
-        <div class="weekly-tx-amount ${isIncome ? 'income' : 'expense'}">${sign}${fmt(t.amount)}</div>
-      </div>`;
-    });
-    const totalHtml = (day.income > 0 || day.expense > 0) ? `
-      <div class="weekly-day-total">
-        ${day.income > 0 ? `<div class="inc">+${fmt(day.income)}</div>` : ''}
-        ${day.expense > 0 ? `<div class="exp">-${fmt(day.expense)}</div>` : ''}
-      </div>` : '';
-    cols += `<div class="weekly-day-col${isWeekend ? ' weekend' : ''}">
-      <div class="weekly-day-header">${DAYS_KO[i]}<br>${dayNum}</div>
-      <div class="weekly-tx-list">${txsHtml}</div>${totalHtml}
+    const pct = Math.round(day.expense / maxExp * 100);
+    bars += `<div class="wk-bar-col${isWeekend ? ' weekend' : ''}">
+      <div class="wk-bar-amt">${day.expense > 0 ? abbr(day.expense) : ''}</div>
+      <div class="wk-bar-track"><div class="wk-bar-fill" style="height:${pct}%"></div></div>
+      <div class="wk-bar-day"><b>${DAYS_KO[i]}</b><br>${d.getDate()}</div>
     </div>`;
   });
+
+  // 지출이 있는 날 기준 일평균
+  const spentDays = data.days.filter(d => d.expense > 0).length;
+  const avg = spentDays > 0 ? Math.round(data.totalExpense / spentDays) : 0;
 
   let catsHtml = '';
   data.categories.forEach(c => {
@@ -4304,215 +4291,21 @@ function renderWeeklyReport() {
   });
 
   document.getElementById('weekly-content').innerHTML = `
-    <div class="weekly-day-grid">${cols}</div>
+    <div class="wk-bars">${bars}</div>
+    <div class="wk-stat-row">
+      <div class="wk-stat">
+        <div class="wk-stat-label">주간 총 지출</div>
+        <div class="wk-stat-value">${fmt(data.totalExpense)}</div>
+      </div>
+      <div class="wk-stat">
+        <div class="wk-stat-label">지출일 평균</div>
+        <div class="wk-stat-value">${fmt(avg)}</div>
+      </div>
+    </div>
     <div class="weekly-summary">
       <div class="weekly-summary-title">카테고리별 지출</div>
       <div class="weekly-cat-chips">${catsHtml || '<div style="color:var(--text3);font-size:13px">지출 없음</div>'}</div>
-      <div class="weekly-total-row">
-        <span class="weekly-total-label">주간 총 지출</span>
-        <span class="weekly-total-amt">${fmt(data.totalExpense)}원</span>
-      </div>
     </div>`;
-
-  document.getElementById('weekly-download-btn').style.display = '';
-}
-
-async function downloadWeeklyReport() {
-  const data = weeklyState.data;
-  if (!data) return;
-
-  const W = 1080;
-  const PAD = 40;
-  const COL_W = Math.floor((W - PAD * 2) / 7);
-  const HEADER_H = 110;
-  const DAY_HEADER_H = 52;
-  const TX_H = 42;
-  const DAY_FOOTER_H = 44;
-  const CAT_ROW_H = 36;
-  const SUMMARY_PAD = 24;
-
-  const maxTxs = Math.max(...data.days.map(d => d.transactions.length), 0);
-  const colH = DAY_HEADER_H + Math.max(maxTxs, 1) * TX_H + DAY_FOOTER_H;
-  const catRows = Math.ceil(data.categories.length / 2) || 1;
-  const summaryH = SUMMARY_PAD * 2 + 28 + catRows * CAT_ROW_H + 50;
-  const totalH = HEADER_H + 20 + colH + 20 + summaryH + 40;
-
-  const canvas = document.getElementById('weekly-canvas');
-  canvas.width = W;
-  canvas.height = totalH;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#f8f4ff';
-  ctx.fillRect(0, 0, W, totalH);
-
-  const grad = ctx.createLinearGradient(0, 0, W, HEADER_H);
-  grad.addColorStop(0, '#c5b3e8');
-  grad.addColorStop(1, '#b3d4f0');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, HEADER_H);
-
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 36px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(getWeekLabel(weeklyState.weekStart), W / 2, 52);
-
-  const sunDate = new Date(weeklyState.weekStart);
-  sunDate.setDate(weeklyState.weekStart.getDate() + 6);
-  const fmtDL = d => `${d.getMonth()+1}월 ${d.getDate()}일`;
-  ctx.font = '20px sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fillText(`${fmtDL(weeklyState.weekStart)} – ${fmtDL(sunDate)}`, W / 2, 86);
-
-  const colsY = HEADER_H + 20;
-  const DAYS_KO = ['월', '화', '수', '목', '금', '토', '일'];
-
-  data.days.forEach((day, i) => {
-    const x = PAD + i * COL_W;
-    const isWeekend = i >= 5;
-
-    ctx.fillStyle = isWeekend ? '#fef0ff' : '#ffffff';
-    wRoundRect(ctx, x, colsY, COL_W - 6, colH, 14);
-    ctx.fill();
-    ctx.strokeStyle = isWeekend ? '#e8d4f0' : '#eee8f8';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    const d = new Date(day.date + 'T00:00:00');
-    ctx.fillStyle = isWeekend ? '#9c5fc8' : '#7e57c2';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(DAYS_KO[i], x + (COL_W - 6) / 2, colsY + 24);
-    ctx.fillStyle = '#555';
-    ctx.font = '14px sans-serif';
-    ctx.fillText(d.getDate(), x + (COL_W - 6) / 2, colsY + 44);
-
-    ctx.strokeStyle = '#ebe4f6';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 8, colsY + DAY_HEADER_H - 4);
-    ctx.lineTo(x + COL_W - 14, colsY + DAY_HEADER_H - 4);
-    ctx.stroke();
-
-    day.transactions.forEach((t, ti) => {
-      const ty = colsY + DAY_HEADER_H + ti * TX_H;
-      const isInc = t.type === 'income';
-      const maxW = COL_W - 18;
-      ctx.font = '11px sans-serif';
-      ctx.fillStyle = '#444';
-      ctx.textAlign = 'left';
-      let content = t.content;
-      if (ctx.measureText(content).width > maxW) {
-        while (ctx.measureText(content + '…').width > maxW && content.length > 1)
-          content = content.slice(0, -1);
-        content += '…';
-      }
-      ctx.fillText(content, x + 8, ty + 16);
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = isInc ? '#5b9bd5' : '#e57373';
-      ctx.fillText((isInc ? '+' : '-') + fmt(t.amount) + '원', x + 8, ty + 30);
-    });
-
-    const footerY = colsY + colH - DAY_FOOTER_H;
-    ctx.strokeStyle = '#ebe4f6';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 8, footerY + 4);
-    ctx.lineTo(x + COL_W - 14, footerY + 4);
-    ctx.stroke();
-
-    const cx2 = x + (COL_W - 6) / 2;
-    ctx.textAlign = 'center';
-    if (day.income > 0 && day.expense > 0) {
-      ctx.font = 'bold 10px sans-serif';
-      ctx.fillStyle = '#5b9bd5';
-      ctx.fillText('+' + fmt(day.income) + '원', cx2, footerY + 20);
-      ctx.fillStyle = '#e57373';
-      ctx.fillText('-' + fmt(day.expense) + '원', cx2, footerY + 34);
-    } else if (day.income > 0) {
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#5b9bd5';
-      ctx.fillText('+' + fmt(day.income) + '원', cx2, footerY + 26);
-    } else if (day.expense > 0) {
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#e57373';
-      ctx.fillText('-' + fmt(day.expense) + '원', cx2, footerY + 26);
-    }
-  });
-
-  const sumY = colsY + colH + 20;
-  ctx.fillStyle = '#ffffff';
-  wRoundRect(ctx, PAD, sumY, W - PAD * 2, summaryH, 18);
-  ctx.fill();
-  ctx.strokeStyle = '#ebe4f6';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.fillStyle = '#2d2d2d';
-  ctx.font = 'bold 22px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('카테고리별 지출', PAD + SUMMARY_PAD, sumY + SUMMARY_PAD + 20);
-
-  const catGridY = sumY + SUMMARY_PAD + 36;
-  const halfW = (W - PAD * 2 - SUMMARY_PAD * 2) / 2;
-  data.categories.forEach((c, ci) => {
-    const col = ci % 2;
-    const row = Math.floor(ci / 2);
-    const cx3 = PAD + SUMMARY_PAD + col * halfW;
-    const cy3 = catGridY + row * CAT_ROW_H;
-    const color = CAT_COLORS_WEEKLY[c.name] || '#D9D9D9';
-
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(cx3 + 7, cy3 + 12, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#6b6b8a';
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(c.name, cx3 + 22, cy3 + 17);
-
-    ctx.fillStyle = '#2d2d2d';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(fmt(c.amount) + '원', cx3 + halfW - 8, cy3 + 17);
-  });
-
-  const totalRowY = catGridY + catRows * CAT_ROW_H + 12;
-  ctx.strokeStyle = '#ebe4f6';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD + SUMMARY_PAD, totalRowY);
-  ctx.lineTo(W - PAD - SUMMARY_PAD, totalRowY);
-  ctx.stroke();
-
-  ctx.fillStyle = '#6b6b8a';
-  ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('주간 총 지출', PAD + SUMMARY_PAD, totalRowY + 30);
-  ctx.fillStyle = '#e57373';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(fmt(data.totalExpense) + '원', W - PAD - SUMMARY_PAD, totalRowY + 30);
-
-  const link = document.createElement('a');
-  link.download = `weekly_report_${dateToStr(weeklyState.weekStart)}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-  showToast('이미지 저장 완료!');
-}
-
-function wRoundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
 }
 
 // =============================================
