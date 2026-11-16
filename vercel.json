@@ -22,7 +22,7 @@
     { "source": "/api/payment-methods", "destination": "/api/payment-methods" },
     { "source": "/api/payment-methods/(.*)", "destination": "/api/payment-methods" },
     { "source": "/api/loans", "destination": "/api/loans" },
-    { "source": "/api/weekly-report", "destination": "/api/weekly-report" },
+    { "source": "/api/budgets", "destination": "/api/budgets" },
     { "source": "/api/inv/(.*)", "destination": "/api/inv" }
   ]
 }

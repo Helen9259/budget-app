@@ -105,7 +105,7 @@ label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 4
 @keyframes ptr-rotate { to { transform: rotate(360deg); } }
 
 /* 서브탭 스와이프 */
-#subtab-calendar, #subtab-fixed, #subtab-weekly { transition: transform .25s ease, opacity .25s ease; }
+#subtab-calendar, #subtab-fixed, #subtab-budget { transition: transform .25s ease, opacity .25s ease; }
 .subtab-slide-from-right { animation: subtab-in-right .25s ease; }
 .subtab-slide-from-left { animation: subtab-in-left .25s ease; }
 @keyframes subtab-in-right { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -462,6 +462,29 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
    주간리포트
    ============================================= */
 .weekly-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 16px 16px 8px; }
+/* 예산관리 */
+.budget-total-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin: 4px 10px 14px; }
+.budget-total-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.budget-total-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.budget-input-wrap { display: flex; align-items: center; gap: 4px; }
+.budget-input-wrap input { width: 120px; text-align: right; font-size: 14px; font-weight: 700; padding: 6px 8px; }
+.budget-input-wrap.sm input { width: 92px; font-size: 13px; }
+.budget-input-wrap span { font-size: 11px; color: var(--text3); }
+.budget-bar { width: 100%; height: 12px; border-radius: 8px; background: var(--border); overflow: hidden; }
+.budget-bar.sm { height: 9px; }
+.budget-bar-fill { height: 100%; border-radius: 8px; transition: width .4s ease; min-width: 2px; }
+.budget-sub { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-top: 5px; }
+.budget-sub.sm { font-size: 11px; }
+.budget-over { color: #e57373; font-weight: 700; }
+.budget-hint { font-size: 12px; color: var(--text3); }
+.budget-cat-title { font-size: 13px; font-weight: 700; color: var(--text2); margin: 0 12px 8px; }
+.budget-cat-list { display: flex; flex-direction: column; gap: 10px; margin: 0 10px; }
+.budget-cat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
+.budget-cat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.budget-cat-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text); }
+.budget-cat-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+/* 홈 예산 초과 알림 */
+.budget-home-alert { margin-top: 10px; background: #fdecec; color: #c0392b; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: center; }
 /* 요일별 지출 막대그래프 */
 .wk-bars { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 8px 12px 0; align-items: end; }
 .wk-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
@@ -825,7 +848,7 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
       <div class="sub-tabs">
         <button class="sub-tab active" onclick="showSubTab('calendar')">캘린더</button>
         <button class="sub-tab" onclick="showSubTab('fixed')">고정지출</button>
-        <button class="sub-tab" onclick="showSubTab('weekly')">주간리포트</button>
+        <button class="sub-tab" onclick="showSubTab('budget')">예산관리</button>
       </div>
 
       <!-- 캘린더 서브탭 -->
@@ -857,6 +880,7 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
                 </div>
               </div>
               <div class="expense-bar-wrap" id="expense-bar-wrap"></div>
+              <div class="budget-home-alert" id="budget-home-alert" style="display:none"></div>
             </div>
           </div>
         </div>
@@ -897,15 +921,14 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
         <div id="fixed-list"></div>
       </div>
 
-      <!-- 주간리포트 -->
-      <div id="subtab-weekly" style="display:none">
+      <!-- 예산관리 -->
+      <div id="subtab-budget" style="display:none">
         <div class="weekly-nav">
-          <button class="month-nav-btn" onclick="weeklyChangeWeek(-1)">←</button>
-          <span class="month-label" id="weekly-label">2026.06 1주차</span>
-          <button class="month-nav-btn" onclick="weeklyChangeWeek(1)">→</button>
+          <button class="month-nav-btn" onclick="budgetChangeMonth(-1)">←</button>
+          <span class="month-label" id="budget-month-label">2026.06</span>
+          <button class="month-nav-btn" onclick="budgetChangeMonth(1)">→</button>
         </div>
-        <div id="weekly-range" style="text-align:center;font-size:12px;color:var(--text2);margin-top:-8px;margin-bottom:12px;"></div>
-        <div id="weekly-content">
+        <div id="budget-content">
           <div class="coming-soon"><div class="coming-soon-icon">📊</div><div class="coming-soon-text">불러오는 중...</div></div>
         </div>
       </div>
@@ -1743,7 +1766,7 @@ function enterApp() {
 // =============================================
 let _currentTab = 'ledger';
 let _currentSubTab = 'calendar';
-const SUBTAB_ORDER = ['calendar', 'fixed', 'weekly'];
+const SUBTAB_ORDER = ['calendar', 'fixed', 'budget'];
 
 function showTab(tab) {
   _currentTab = tab;
@@ -3012,7 +3035,7 @@ function showSubTab(tab) {
   );
   document.getElementById('fab').style.display = tab === 'calendar' ? '' : 'none';
   if (tab === 'fixed') renderFixedList();
-  if (tab === 'weekly') initWeeklyReport();
+  if (tab === 'budget') initBudget();
 }
 
 // =============================================
@@ -3020,11 +3043,17 @@ function showSubTab(tab) {
 // =============================================
 async function loadMonth() {
   try {
-    const data = await api('GET', `/api/transactions?year=${state.year}&month=${state.month}`);
+    const ym = toYM(state.year, state.month);
+    const [data, budgets] = await Promise.all([
+      api('GET', `/api/transactions?year=${state.year}&month=${state.month}`),
+      api('GET', `/api/budgets?year_month=${ym}`).catch(() => []),
+    ]);
     state.transactions = data;
+    buildBudgetMap(budgets || []);
     renderCalendar();
     renderSummary();
     renderCardSummary();
+    if (_currentTab === 'ledger' && _currentSubTab === 'budget') renderBudget();
   } catch (e) {
     console.error('[loadMonth] 실패:', e.message);
     // 인증 오류가 아닌 경우 (doLogout이 아닌 단순 네트워크/서버 오류)
@@ -3161,6 +3190,8 @@ function renderSummary() {
   const balSign = balance < 0 ? '-' : '';
   document.getElementById('sum-balance').textContent = `${balSign}${noWon(Math.abs(balance))}`;
 
+  updateBudgetHomeAlert(expense);
+
   const barWrap = document.getElementById('expense-bar-wrap');
   if (expense === 0) {
     barWrap.innerHTML = '<div class="expense-bar-empty">지출 내역이 없어요</div>';
@@ -3178,6 +3209,23 @@ function renderSummary() {
   // 구간 내부 텍스트 자동 맞춤
   fitBarSegment(barWrap.querySelector('.expense-bar-fixed'), '고정', fixedExp);
   fitBarSegment(barWrap.querySelector('.expense-bar-normal'), '일반', normalExp);
+}
+
+// 홈(요약 카드) 예산 초과 알림
+function updateBudgetHomeAlert(totalSpent) {
+  const el = document.getElementById('budget-home-alert');
+  if (!el) return;
+  const msgs = [];
+  if (budgetState.total > 0 && totalSpent > budgetState.total)
+    msgs.push(`전체 예산 초과 ${fmt(totalSpent - budgetState.total)}`);
+  const { byCat } = budgetSpent();
+  const over = [];
+  Object.entries(budgetState.cats).forEach(([cat, limit]) => {
+    if (limit > 0 && (byCat[cat] || 0) > limit) over.push(cat);
+  });
+  if (over.length) msgs.push(`${over.slice(0, 3).join(', ')}${over.length > 3 ? ' 외' : ''} 한도 초과`);
+  if (msgs.length) { el.style.display = ''; el.textContent = '⚠️ ' + msgs.join(' · '); }
+  else el.style.display = 'none';
 }
 
 // 구간 폭에 맞춰 폰트 축소 → 금액만 → 생략 순으로 처리
@@ -4173,139 +4221,125 @@ async function saveNewPaymentMethod() {
 }
 
 // =============================================
-// 주간리포트
+// 예산관리
 // =============================================
-const weeklyState = { weekStart: null, data: null };
+const budgetState = { total: 0, cats: {} };  // cats: {카테고리명: 한도}
 
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getDefaultWeekStart() {
-  const today = new Date();
-  const thisMonday = getMondayOf(today);
-  const prevMonday = new Date(thisMonday);
-  prevMonday.setDate(thisMonday.getDate() - 7);
-  return prevMonday;
-}
-
-function dateToStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function getWeekLabel(monDate) {
-  const y = monDate.getFullYear();
-  const m = monDate.getMonth() + 1;
-  let weekNum = 0;
-  const d = new Date(y, m - 1, 1);
-  while (d <= monDate) {
-    if (d.getDay() === 1) weekNum++;
-    d.setDate(d.getDate() + 1);
-  }
-  if (weekNum === 0) weekNum = 1;
-  return `${y}.${String(m).padStart(2,'0')} ${weekNum}주차`;
-}
-
-function initWeeklyReport() {
-  if (!weeklyState.weekStart) weeklyState.weekStart = getDefaultWeekStart();
-  renderWeeklyNav();
-  loadWeeklyReport();
-}
-
-function weeklyChangeWeek(dir) {
-  const d = new Date(weeklyState.weekStart);
-  d.setDate(d.getDate() + dir * 7);
-  weeklyState.weekStart = d;
-  weeklyState.data = null;
-  renderWeeklyNav();
-  loadWeeklyReport();
-}
-
-function renderWeeklyNav() {
-  const ws = weeklyState.weekStart;
-  document.getElementById('weekly-label').textContent = getWeekLabel(ws);
-  const sunDate = new Date(ws);
-  sunDate.setDate(ws.getDate() + 6);
-  const fmtD = d => `${d.getMonth()+1}.${d.getDate()}`;
-  document.getElementById('weekly-range').textContent = `${fmtD(ws)} – ${fmtD(sunDate)}`;
-}
-
-async function loadWeeklyReport() {
-  document.getElementById('weekly-content').innerHTML =
-    '<div class="coming-soon"><div class="coming-soon-icon">📊</div><div class="coming-soon-text">불러오는 중...</div></div>';
-  try {
-    const ws = dateToStr(weeklyState.weekStart);
-    weeklyState.data = await api('GET', `/api/weekly-report?week_start=${ws}`);
-    renderWeeklyReport();
-  } catch (e) {
-    document.getElementById('weekly-content').innerHTML =
-      `<div class="coming-soon"><div class="coming-soon-text">${e.message}</div></div>`;
-  }
-}
-
-const CAT_COLORS_WEEKLY = {
-  '식비': '#FFB5A7', '교통': '#A8D8EA', '주거': '#C9B8E8', '쇼핑·미용': '#B5EAD7',
-  '의료건강': '#C7E8A0', '문화여가': '#FFDAC1', '교육': '#E2C4F0',
-  '경조사': '#FFD6E0', '기타지출': '#D9D9D9', '근로소득': '#A0C4FF',
-  '금융소득': '#B0E2FF', '기타수입': '#B8F0C8'
-};
-
-function renderWeeklyReport() {
-  const data = weeklyState.data;
-  if (!data) return;
-
-  const DAYS_KO = ['월', '화', '수', '목', '금', '토', '일'];
-  const abbr = n => n >= 10000 ? (n / 10000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + '만'
-                 : (n > 0 ? Math.round(n / 1000) + '천' : '');
-  const maxExp = Math.max(...data.days.map(d => d.expense), 1);
-
-  let bars = '';
-  data.days.forEach((day, i) => {
-    const isWeekend = i >= 5;
-    const d = new Date(day.date + 'T00:00:00');
-    const pct = Math.round(day.expense / maxExp * 100);
-    bars += `<div class="wk-bar-col${isWeekend ? ' weekend' : ''}">
-      <div class="wk-bar-amt">${day.expense > 0 ? abbr(day.expense) : ''}</div>
-      <div class="wk-bar-track"><div class="wk-bar-fill" style="height:${pct}%"></div></div>
-      <div class="wk-bar-day"><b>${DAYS_KO[i]}</b><br>${d.getDate()}</div>
-    </div>`;
+function buildBudgetMap(rows) {
+  budgetState.total = 0; budgetState.cats = {};
+  (rows || []).forEach(r => {
+    if (r.category === '__total__') budgetState.total = r.limit_amount;
+    else budgetState.cats[r.category] = r.limit_amount;
   });
+}
 
-  // 지출이 있는 날 기준 일평균
-  const spentDays = data.days.filter(d => d.expense > 0).length;
-  const avg = spentDays > 0 ? Math.round(data.totalExpense / spentDays) : 0;
+async function loadBudget() {
+  const ym = toYM(state.year, state.month);
+  try { buildBudgetMap(await api('GET', `/api/budgets?year_month=${ym}`)); }
+  catch { buildBudgetMap([]); }
+}
 
-  let catsHtml = '';
-  data.categories.forEach(c => {
-    const color = CAT_COLORS_WEEKLY[c.name] || '#D9D9D9';
-    catsHtml += `<div class="weekly-cat-chip">
-      <div class="weekly-cat-dot" style="background:${color}"></div>
-      <span class="weekly-cat-name">${escHtml(c.name)}</span>
-      <span class="weekly-cat-amt">${fmt(c.amount)}원</span>
-    </div>`;
+// 카테고리별/전체 지출 합계 (저축·투자 등 제외 카테고리는 빼고, 지출만)
+function budgetSpent() {
+  const byCat = {}; let total = 0;
+  state.transactions.forEach(t => {
+    if (t.type !== 'expense' || isExcluded(t.category)) return;
+    byCat[t.category] = (byCat[t.category] || 0) + t.amount;
+    total += t.amount;
   });
+  return { byCat, total };
+}
 
-  document.getElementById('weekly-content').innerHTML = `
-    <div class="wk-bars">${bars}</div>
-    <div class="wk-stat-row">
-      <div class="wk-stat">
-        <div class="wk-stat-label">주간 총 지출</div>
-        <div class="wk-stat-value">${fmt(data.totalExpense)}</div>
+// 신호등: <80% 초록, 80~95% 노랑, 95%~ 빨강
+function budgetBarColor(pct) {
+  if (pct >= 95) return '#e57373';
+  if (pct >= 80) return '#f6c343';
+  return '#5cc98f';
+}
+
+async function initBudget() {
+  document.getElementById('budget-month-label').textContent = monthStr(state.year, state.month);
+  await loadBudget();
+  renderBudget();
+}
+
+async function budgetChangeMonth(d) {
+  state.month += d;
+  if (state.month > 12) { state.month = 1; state.year++; }
+  if (state.month < 1) { state.month = 12; state.year--; }
+  document.getElementById('month-label').textContent = monthStr(state.year, state.month);
+  document.getElementById('budget-month-label').textContent = monthStr(state.year, state.month);
+  await loadMonth();     // 거래 + 예산 갱신
+  renderBudget();
+}
+
+function renderBudget() {
+  const el = document.getElementById('budget-content');
+  if (!el) return;
+  const { byCat, total: totalSpent } = budgetSpent();
+  const totalBudget = budgetState.total || 0;
+  const totalPct = totalBudget > 0 ? Math.round(totalSpent / totalBudget * 100) : 0;
+  const totalRemain = totalBudget - totalSpent;
+
+  let html = `
+    <div class="budget-total-card">
+      <div class="budget-total-head">
+        <span class="budget-total-label">이번 달 전체 예산</span>
+        <div class="budget-input-wrap">
+          <input type="text" id="budget-total-input" inputmode="numeric" placeholder="미설정"
+            value="${totalBudget ? fmtInput(totalBudget) : ''}" oninput="formatAmount(this)">
+          <span>원</span>
+        </div>
       </div>
-      <div class="wk-stat">
-        <div class="wk-stat-label">지출일 평균</div>
-        <div class="wk-stat-value">${fmt(avg)}</div>
-      </div>
+      ${totalBudget > 0 ? `
+      <div class="budget-bar"><div class="budget-bar-fill" style="width:${Math.min(totalPct, 100)}%;background:${budgetBarColor(totalPct)}"></div></div>
+      <div class="budget-sub">
+        <span>${fmt(totalSpent)} / ${fmt(totalBudget)} · ${totalPct}%</span>
+        <span class="${totalRemain < 0 ? 'budget-over' : ''}">${totalRemain < 0 ? '초과 ' + fmt(-totalRemain) : '남음 ' + fmt(totalRemain)}</span>
+      </div>` : '<div class="budget-hint">전체 예산을 입력하면 진행 바가 표시됩니다.</div>'}
     </div>
-    <div class="weekly-summary">
-      <div class="weekly-summary-title">카테고리별 지출</div>
-      <div class="weekly-cat-chips">${catsHtml || '<div style="color:var(--text3);font-size:13px">지출 없음</div>'}</div>
-    </div>`;
+    <div class="budget-cat-title">카테고리별 한도</div>
+    <div class="budget-cat-list">`;
+
+  (CATEGORIES.expense || []).filter(c => !c.excluded).forEach(c => {
+    const spent = byCat[c.name] || 0;
+    const limit = budgetState.cats[c.name] || 0;
+    const pct = limit > 0 ? Math.round(spent / limit * 100) : 0;
+    html += `
+      <div class="budget-cat-row">
+        <div class="budget-cat-top">
+          <span class="budget-cat-name"><span class="budget-cat-dot" style="background:${getCatColor(c.name)}"></span>${escHtml(c.name)}</span>
+          <div class="budget-input-wrap sm">
+            <input type="text" inputmode="numeric" placeholder="한도" data-cat="${escHtml(c.name)}"
+              value="${limit ? fmtInput(limit) : ''}" oninput="formatAmount(this)">
+            <span>원</span>
+          </div>
+        </div>
+        ${limit > 0 ? `
+        <div class="budget-bar sm"><div class="budget-bar-fill" style="width:${Math.min(pct, 100)}%;background:${budgetBarColor(pct)}"></div></div>
+        <div class="budget-sub sm"><span>${fmt(spent)} / ${fmt(limit)}</span><span>${pct}%</span></div>`
+        : `<div class="budget-sub sm"><span style="color:var(--text3)">쓴 금액 ${fmt(spent)}</span></div>`}
+      </div>`;
+  });
+
+  html += `</div>
+    <button class="btn-primary" style="margin:14px 2px 28px" onclick="saveBudget()">예산 저장</button>`;
+  el.innerHTML = html;
+}
+
+async function saveBudget() {
+  const ym = toYM(state.year, state.month);
+  const items = [{ category: '__total__', limit_amount: parseAmt(document.getElementById('budget-total-input').value) }];
+  document.querySelectorAll('.budget-cat-list input[data-cat]').forEach(inp => {
+    items.push({ category: inp.dataset.cat, limit_amount: parseAmt(inp.value) });
+  });
+  try {
+    await api('PUT', '/api/budgets', { year_month: ym, items });
+    await loadBudget();
+    renderBudget();
+    renderSummary();   // 홈 예산 알림 갱신
+    showToast('예산이 저장되었습니다.');
+  } catch (e) { showToast(e.message); }
 }
 
 // =============================================
@@ -4518,7 +4552,7 @@ async function refreshCurrentMainTab() {
   if (_currentTab === 'ledger') {
     await Promise.all([loadMonth(), loadCards()]);
     if (_currentSubTab === 'fixed') { await loadFixedExpenses(); renderFixedList(); }
-    if (_currentSubTab === 'weekly') await loadWeeklyReport();
+    if (_currentSubTab === 'budget') { await loadBudget(); renderBudget(); }
   } else if (_currentTab === 'assets') {
     await loadAssets();
   } else if (_currentTab === 'settings') {

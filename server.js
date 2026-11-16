@@ -28,7 +28,7 @@ app.use(require('./api/fixed-expenses'));
 app.use(require('./api/assets'));
 app.use(require('./api/payment-methods'));
 app.use(require('./api/loans'));
-app.use(require('./api/weekly-report'));
+app.use(require('./api/budgets'));
 app.use(require('./api/inv'));
 
 app.listen(PORT, () => console.log(`로컬 서버 실행 중: http://localhost:${PORT}`));
