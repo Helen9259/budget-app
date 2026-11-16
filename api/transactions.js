@@ -44,24 +44,28 @@ app.post('/api/transactions', requireAppToken, async (req, res) => {
 // 검색 (/:id 보다 먼저 등록)
 app.get('/api/transactions/search', requireAppToken, async (req, res) => {
   const { q, date_from, date_to, category, payment, amount_min, amount_max } = req.query;
-  let query = supabase.from('transactions').select('*');
-  if (q) {
-    // 내용·메모·카테고리·소분류 전체에서 부분일치 검색.
-    // PostgREST or() 문법을 깨는 특수문자(, ( ))는 공백으로 치환해 안전하게 처리.
-    const safe = String(q).replace(/[,()]/g, ' ').trim();
-    const pat = `%${safe}%`;
-    query = query.or(
-      `content.ilike.${pat},memo.ilike.${pat},category.ilike.${pat},subcategory.ilike.${pat}`
-    );
-  }
-  if (date_from) query = query.gte('date', date_from);
-  if (date_to) query = query.lte('date', date_to);
-  if (category) query = query.eq('category', category);
-  if (payment) query = query.eq('payment_method', payment);
-  if (amount_min) query = query.gte('amount', parseInt(amount_min));
-  if (amount_max) query = query.lte('amount', parseInt(amount_max));
-  query = query.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(300);
-  const { data, error } = await query;
+  // 조건을 매번 새 쿼리에 적용 (fetchAllRows 의 .range 재적용을 위해 빌더 함수로)
+  const build = () => {
+    let query = supabase.from('transactions').select('*');
+    if (q) {
+      // 내용·메모·카테고리·소분류 전체에서 부분일치 검색.
+      // PostgREST or() 문법을 깨는 특수문자(, ( ))는 공백으로 치환해 안전하게 처리.
+      const safe = String(q).replace(/[,()]/g, ' ').trim();
+      const pat = `%${safe}%`;
+      query = query.or(
+        `content.ilike.${pat},memo.ilike.${pat},category.ilike.${pat},subcategory.ilike.${pat}`
+      );
+    }
+    if (date_from) query = query.gte('date', date_from);
+    if (date_to) query = query.lte('date', date_to);
+    if (category) query = query.eq('category', category);
+    if (payment) query = query.eq('payment_method', payment);
+    if (amount_min) query = query.gte('amount', parseInt(amount_min));
+    if (amount_max) query = query.lte('amount', parseInt(amount_max));
+    return query.order('date', { ascending: false }).order('created_at', { ascending: false });
+  };
+  // 1,000행 제한 없이 전체 결과 반환
+  const { data, error } = await fetchAllRows(build);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });

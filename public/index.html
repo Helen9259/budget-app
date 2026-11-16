@@ -2868,12 +2868,19 @@ function renderSearchResults(txs) {
   _searchResults = txs || [];
   const infoEl = document.getElementById('sch-result-info');
   const resultEl = document.getElementById('sch-results');
-  infoEl.textContent = `검색 결과 ${txs.length}건`;
 
   if (txs.length === 0) {
+    infoEl.textContent = '검색 결과 0건';
     resultEl.innerHTML = `<div class="search-empty"><div class="search-empty-icon">😅</div><div class="search-empty-text">검색 결과가 없어요</div><div class="search-empty-sub">다른 검색어나 필터를 사용해보세요</div></div>`;
     return;
   }
+
+  // 결과 합계 (수입/지출)
+  let inc = 0, exp = 0;
+  txs.forEach(t => { if (t.type === 'income') inc += t.amount; else exp += t.amount; });
+  infoEl.innerHTML = `<span class="sch-count">검색 결과 ${txs.length}건</span>`
+    + (exp > 0 ? ` · <span class="s-expense">지출 ${fmt(exp)}</span>` : '')
+    + (inc > 0 ? ` · <span class="s-income">수입 ${fmt(inc)}</span>` : '');
 
   // group by date
   const groups = {};
