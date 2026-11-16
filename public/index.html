@@ -463,12 +463,15 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
    ============================================= */
 .weekly-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 16px 16px 8px; }
 /* 예산관리 */
+.budget-alert { background: #fdecec; color: #c0392b; border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight: 700; text-align: center; margin: 4px 10px 12px; }
+.budget-empty { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 20px; }
+.budget-empty-icon { font-size: 40px; margin-bottom: 10px; }
 .budget-total-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin: 4px 10px 14px; }
 .budget-total-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .budget-total-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.budget-total-amt { font-size: 15px; font-weight: 700; color: var(--text); }
 .budget-input-wrap { display: flex; align-items: center; gap: 4px; }
 .budget-input-wrap input { width: 120px; text-align: right; font-size: 14px; font-weight: 700; padding: 6px 8px; }
-.budget-input-wrap.sm input { width: 92px; font-size: 13px; }
 .budget-input-wrap span { font-size: 11px; color: var(--text3); }
 .budget-bar { width: 100%; height: 12px; border-radius: 8px; background: var(--border); overflow: hidden; }
 .budget-bar.sm { height: 9px; }
@@ -476,15 +479,21 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 .budget-sub { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-top: 5px; }
 .budget-sub.sm { font-size: 11px; }
 .budget-over { color: #e57373; font-weight: 700; }
-.budget-hint { font-size: 12px; color: var(--text3); }
-.budget-cat-title { font-size: 13px; font-weight: 700; color: var(--text2); margin: 0 12px 8px; }
+.budget-cat-title-row { display: flex; align-items: center; justify-content: space-between; margin: 0 12px 8px; }
+.budget-cat-title { font-size: 13px; font-weight: 700; color: var(--text2); }
+.budget-edit-btn { font-size: 12px; font-weight: 600; color: var(--primary-dark); background: var(--primary-light); border-radius: 12px; padding: 5px 12px; }
 .budget-cat-list { display: flex; flex-direction: column; gap: 10px; margin: 0 10px; }
 .budget-cat-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
 .budget-cat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .budget-cat-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text); }
+.budget-cat-amt { font-size: 12px; color: var(--text2); font-weight: 600; flex-shrink: 0; }
 .budget-cat-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-/* 홈 예산 초과 알림 */
-.budget-home-alert { margin-top: 10px; background: #fdecec; color: #c0392b; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 600; text-align: center; }
+/* 예산 설정 패널 */
+.budget-edit-body { flex: 1; overflow-y: auto; padding: 12px 14px 16px; }
+.budget-edit-total-bar { display: flex; align-items: center; justify-content: space-between; background: var(--primary-light); color: var(--primary-dark); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-weight: 700; font-size: 14px; }
+.budget-edit-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+.budget-edit-row:last-child { border-bottom: none; }
+.budget-edit-save-bar { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); }
 /* 요일별 지출 막대그래프 */
 .wk-bars { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; padding: 8px 12px 0; align-items: end; }
 .wk-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
@@ -880,7 +889,6 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
                 </div>
               </div>
               <div class="expense-bar-wrap" id="expense-bar-wrap"></div>
-              <div class="budget-home-alert" id="budget-home-alert" style="display:none"></div>
             </div>
           </div>
         </div>
@@ -1453,6 +1461,25 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
     <div style="padding:12px 16px 4px;font-size:12px;color:var(--text3)">길게 눌러 드래그로 순서를 변경할 수 있어요</div>
     <div id="pay-mgmt-list" style="padding-top:8px"></div>
     <button class="btn-add-cat" onclick="openAddPaymentMethod()">+ 지출수단 추가</button>
+  </div>
+</div>
+
+<!-- 예산 설정 패널 -->
+<div class="cat-mgmt-panel" id="budget-edit-panel">
+  <div class="panel-header">
+    <button class="panel-back" onclick="closeBudgetEdit()">←</button>
+    <div class="panel-title">예산 설정 · <span id="budget-edit-month"></span></div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="budget-edit-body">
+    <div class="budget-edit-total-bar">
+      <span>카테고리 합계 (전체 예산)</span>
+      <span id="budget-edit-total">₩0</span>
+    </div>
+    <div id="budget-edit-rows"></div>
+  </div>
+  <div class="budget-edit-save-bar">
+    <button class="btn-primary" onclick="saveBudget()">저장</button>
   </div>
 </div>
 
@@ -3190,8 +3217,6 @@ function renderSummary() {
   const balSign = balance < 0 ? '-' : '';
   document.getElementById('sum-balance').textContent = `${balSign}${noWon(Math.abs(balance))}`;
 
-  updateBudgetHomeAlert(expense);
-
   const barWrap = document.getElementById('expense-bar-wrap');
   if (expense === 0) {
     barWrap.innerHTML = '<div class="expense-bar-empty">지출 내역이 없어요</div>';
@@ -3209,23 +3234,6 @@ function renderSummary() {
   // 구간 내부 텍스트 자동 맞춤
   fitBarSegment(barWrap.querySelector('.expense-bar-fixed'), '고정', fixedExp);
   fitBarSegment(barWrap.querySelector('.expense-bar-normal'), '일반', normalExp);
-}
-
-// 홈(요약 카드) 예산 초과 알림
-function updateBudgetHomeAlert(totalSpent) {
-  const el = document.getElementById('budget-home-alert');
-  if (!el) return;
-  const msgs = [];
-  if (budgetState.total > 0 && totalSpent > budgetState.total)
-    msgs.push(`전체 예산 초과 ${fmt(totalSpent - budgetState.total)}`);
-  const { byCat } = budgetSpent();
-  const over = [];
-  Object.entries(budgetState.cats).forEach(([cat, limit]) => {
-    if (limit > 0 && (byCat[cat] || 0) > limit) over.push(cat);
-  });
-  if (over.length) msgs.push(`${over.slice(0, 3).join(', ')}${over.length > 3 ? ' 외' : ''} 한도 초과`);
-  if (msgs.length) { el.style.display = ''; el.textContent = '⚠️ ' + msgs.join(' · '); }
-  else el.style.display = 'none';
 }
 
 // 구간 폭에 맞춰 폰트 축소 → 금액만 → 생략 순으로 처리
@@ -4223,14 +4231,16 @@ async function saveNewPaymentMethod() {
 // =============================================
 // 예산관리
 // =============================================
-const budgetState = { total: 0, cats: {} };  // cats: {카테고리명: 한도}
+const budgetState = { cats: {} };  // cats: {카테고리명: 한도}  (전체 예산은 합계로 자동 계산)
 
 function buildBudgetMap(rows) {
-  budgetState.total = 0; budgetState.cats = {};
+  budgetState.cats = {};
   (rows || []).forEach(r => {
-    if (r.category === '__total__') budgetState.total = r.limit_amount;
-    else budgetState.cats[r.category] = r.limit_amount;
+    if (r.category !== '__total__') budgetState.cats[r.category] = r.limit_amount; // __total__ 저장분은 무시(합계 자동)
   });
+}
+function budgetTotalLimit() {
+  return Object.values(budgetState.cats).reduce((s, v) => s + (v || 0), 0);
 }
 
 async function loadBudget() {
@@ -4257,6 +4267,20 @@ function budgetBarColor(pct) {
   return '#5cc98f';
 }
 
+// 예산 초과 메시지 목록 (전체/카테고리)
+function budgetOverMessages() {
+  const { byCat, total: totalSpent } = budgetSpent();
+  const totalLimit = budgetTotalLimit();
+  const msgs = [];
+  if (totalLimit > 0 && totalSpent > totalLimit) msgs.push(`전체 예산 초과 ${fmt(totalSpent - totalLimit)}`);
+  const over = [];
+  Object.entries(budgetState.cats).forEach(([cat, limit]) => {
+    if (limit > 0 && (byCat[cat] || 0) > limit) over.push(cat);
+  });
+  if (over.length) msgs.push(`${over.slice(0, 3).join(', ')}${over.length > 3 ? ' 외' : ''} 한도 초과`);
+  return msgs;
+}
+
 async function initBudget() {
   document.getElementById('budget-month-label').textContent = monthStr(state.year, state.month);
   await loadBudget();
@@ -4273,71 +4297,110 @@ async function budgetChangeMonth(d) {
   renderBudget();
 }
 
+// ===== 보기 화면 (읽기 전용 진행 바 + 알림) =====
 function renderBudget() {
   const el = document.getElementById('budget-content');
   if (!el) return;
   const { byCat, total: totalSpent } = budgetSpent();
-  const totalBudget = budgetState.total || 0;
-  const totalPct = totalBudget > 0 ? Math.round(totalSpent / totalBudget * 100) : 0;
-  const totalRemain = totalBudget - totalSpent;
+  const totalLimit = budgetTotalLimit();
+  const cats = (CATEGORIES.expense || []).filter(c => !c.excluded);
+  const hasBudget = totalLimit > 0;
 
-  let html = `
+  // 상단 알림
+  const msgs = budgetOverMessages();
+  let html = msgs.length
+    ? `<div class="budget-alert">⚠️ ${msgs.join(' · ')}</div>` : '';
+
+  if (!hasBudget) {
+    html += `<div class="budget-empty">
+      <div class="budget-empty-icon">🎯</div>
+      <div>아직 설정한 예산이 없어요.</div>
+      <button class="btn-primary" style="margin-top:14px" onclick="openBudgetEdit()">예산 설정하기</button>
+    </div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  const totalPct = Math.round(totalSpent / totalLimit * 100);
+  const totalRemain = totalLimit - totalSpent;
+  html += `
     <div class="budget-total-card">
       <div class="budget-total-head">
         <span class="budget-total-label">이번 달 전체 예산</span>
-        <div class="budget-input-wrap">
-          <input type="text" id="budget-total-input" inputmode="numeric" placeholder="미설정"
-            value="${totalBudget ? fmtInput(totalBudget) : ''}" oninput="formatAmount(this)">
-          <span>원</span>
-        </div>
+        <span class="budget-total-amt">${fmt(totalLimit)}</span>
       </div>
-      ${totalBudget > 0 ? `
       <div class="budget-bar"><div class="budget-bar-fill" style="width:${Math.min(totalPct, 100)}%;background:${budgetBarColor(totalPct)}"></div></div>
       <div class="budget-sub">
-        <span>${fmt(totalSpent)} / ${fmt(totalBudget)} · ${totalPct}%</span>
+        <span>${fmt(totalSpent)} / ${fmt(totalLimit)} · ${totalPct}%</span>
         <span class="${totalRemain < 0 ? 'budget-over' : ''}">${totalRemain < 0 ? '초과 ' + fmt(-totalRemain) : '남음 ' + fmt(totalRemain)}</span>
-      </div>` : '<div class="budget-hint">전체 예산을 입력하면 진행 바가 표시됩니다.</div>'}
+      </div>
     </div>
-    <div class="budget-cat-title">카테고리별 한도</div>
+    <div class="budget-cat-title-row">
+      <span class="budget-cat-title">카테고리별 한도</span>
+      <button class="budget-edit-btn" onclick="openBudgetEdit()">✏️ 설정</button>
+    </div>
     <div class="budget-cat-list">`;
 
-  (CATEGORIES.expense || []).filter(c => !c.excluded).forEach(c => {
-    const spent = byCat[c.name] || 0;
+  cats.forEach(c => {
     const limit = budgetState.cats[c.name] || 0;
-    const pct = limit > 0 ? Math.round(spent / limit * 100) : 0;
+    if (limit <= 0) return;  // 보기 화면에는 한도 설정된 것만
+    const spent = byCat[c.name] || 0;
+    const pct = Math.round(spent / limit * 100);
     html += `
       <div class="budget-cat-row">
         <div class="budget-cat-top">
           <span class="budget-cat-name"><span class="budget-cat-dot" style="background:${getCatColor(c.name)}"></span>${escHtml(c.name)}</span>
-          <div class="budget-input-wrap sm">
-            <input type="text" inputmode="numeric" placeholder="한도" data-cat="${escHtml(c.name)}"
-              value="${limit ? fmtInput(limit) : ''}" oninput="formatAmount(this)">
-            <span>원</span>
-          </div>
+          <span class="budget-cat-amt">${fmt(spent)} / ${fmt(limit)}</span>
         </div>
-        ${limit > 0 ? `
         <div class="budget-bar sm"><div class="budget-bar-fill" style="width:${Math.min(pct, 100)}%;background:${budgetBarColor(pct)}"></div></div>
-        <div class="budget-sub sm"><span>${fmt(spent)} / ${fmt(limit)}</span><span>${pct}%</span></div>`
-        : `<div class="budget-sub sm"><span style="color:var(--text3)">쓴 금액 ${fmt(spent)}</span></div>`}
+        <div class="budget-sub sm"><span></span><span>${pct}%</span></div>
       </div>`;
   });
-
-  html += `</div>
-    <button class="btn-primary" style="margin:14px 2px 28px" onclick="saveBudget()">예산 저장</button>`;
+  html += `</div>`;
   el.innerHTML = html;
+}
+
+// ===== 설정 화면 (한도 입력) =====
+function openBudgetEdit() {
+  document.getElementById('budget-edit-month').textContent = monthStr(state.year, state.month);
+  renderBudgetEditForm();
+  document.getElementById('budget-edit-panel').classList.add('visible');
+}
+function closeBudgetEdit() {
+  document.getElementById('budget-edit-panel').classList.remove('visible');
+}
+function renderBudgetEditForm() {
+  const el = document.getElementById('budget-edit-rows');
+  const cats = (CATEGORIES.expense || []).filter(c => !c.excluded);
+  el.innerHTML = cats.map(c => `
+    <div class="budget-edit-row">
+      <span class="budget-cat-name"><span class="budget-cat-dot" style="background:${getCatColor(c.name)}"></span>${escHtml(c.name)}</span>
+      <div class="budget-input-wrap">
+        <input type="text" inputmode="numeric" placeholder="미설정" data-cat="${escHtml(c.name)}"
+          value="${budgetState.cats[c.name] ? fmtInput(budgetState.cats[c.name]) : ''}"
+          oninput="formatAmount(this);updateBudgetEditTotal()">
+        <span>원</span>
+      </div>
+    </div>`).join('');
+  updateBudgetEditTotal();
+}
+function updateBudgetEditTotal() {
+  let sum = 0;
+  document.querySelectorAll('#budget-edit-rows input[data-cat]').forEach(i => sum += parseAmt(i.value));
+  document.getElementById('budget-edit-total').textContent = fmt(sum);
 }
 
 async function saveBudget() {
   const ym = toYM(state.year, state.month);
-  const items = [{ category: '__total__', limit_amount: parseAmt(document.getElementById('budget-total-input').value) }];
-  document.querySelectorAll('.budget-cat-list input[data-cat]').forEach(inp => {
+  const items = [];
+  document.querySelectorAll('#budget-edit-rows input[data-cat]').forEach(inp => {
     items.push({ category: inp.dataset.cat, limit_amount: parseAmt(inp.value) });
   });
   try {
     await api('PUT', '/api/budgets', { year_month: ym, items });
     await loadBudget();
+    closeBudgetEdit();
     renderBudget();
-    renderSummary();   // 홈 예산 알림 갱신
     showToast('예산이 저장되었습니다.');
   } catch (e) { showToast(e.message); }
 }
