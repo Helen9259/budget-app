@@ -732,39 +732,60 @@ input[type="date"]::-webkit-date-and-time-value { text-align: center; margin: 0;
 .update-banner button { background: #fff; color: var(--primary-dark); border-radius: 16px; padding: 6px 14px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
 
 /* ============================================================
-   데스크톱(넓은 화면) — 모바일 레이아웃을 가운데 폰 폭 프레임으로 모음.
-   모바일(≤767px)에는 영향 없음.
+   데스크톱(넓은 화면) PC 최적화 — @media 안에서만 적용.
+   모바일(≤767px)에는 영향 없음(기존 레이아웃 그대로).
    ============================================================ */
 @media (min-width: 768px) {
-  :root { --app-max: 460px; }
-  body { background: #e7e3f1; }
-  /* 메인 앱 열을 가운데로 + 좌우 프레임 그림자 */
-  #main-screen {
-    max-width: var(--app-max);
-    margin: 0 auto;
-    background: var(--bg);
-    box-shadow: 0 0 0 1px rgba(90,70,140,.06), 0 10px 44px rgba(80,60,130,.14);
+  :root { --content-max: 1040px; --cal-max: 720px; --sheet-max: 500px; }
+  body { background: #eceaf4; }
+  #main-screen { background: var(--bg); }
+
+  /* --- 상단 탭바: 하단 떠있는 알약 → 헤더 아래 상단 바 (flex order로 재배치) --- */
+  .app-header { order: 0; }
+  .tab-bar {
+    position: static; order: 1; transform: none; left: auto; bottom: auto;
+    margin: 12px auto 0; box-shadow: none; border: 1px solid var(--border);
   }
-  /* 전체화면 패널(검색·통계·카테고리/카드/지출수단 관리·자산입력·대출편집)을 같은 열에 맞춤 */
-  .cat-mgmt-panel, .asset-input-panel, .loan-edit-panel,
-  .stats-panel, .search-panel {
-    left: 50%; right: auto; transform: translateX(-50%);
-    width: 100%; max-width: var(--app-max);
+  .content-area { order: 2; padding-top: 14px; padding-bottom: 40px; }
+
+  /* --- 콘텐츠 가운데 정렬 + 폭 제한 --- */
+  #tab-ledger { max-width: var(--cal-max); margin: 0 auto; width: 100%; }
+  #tab-assets { max-width: var(--content-max); margin: 0 auto; width: 100%; }
+  #tab-settings { max-width: 640px; margin: 0 auto; width: 100%; }
+
+  /* --- FAB: 캘린더 열 오른쪽 하단에 --- */
+  .fab { right: max(20px, calc(50% - var(--cal-max) / 2 + 16px)); bottom: 28px; }
+
+  /* --- 2단계: 자산관리 2단 구성 (DOM 변경 없이 Grid) --- */
+  #tab-assets { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  #tab-assets .asset-header, #tab-assets .asset-summary-cards { grid-column: 1 / -1; }
+  #tab-assets .asset-section { margin: 0; }
+
+  /* --- 2단계: 통계 패널 2단 (도넛 ↔ 카테고리 리스트) --- */
+  .stats-panel { left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: var(--content-max); }
+  .stats-body { display: grid; grid-template-columns: 320px 1fr; gap: 0 28px; align-items: start; }
+  .stats-body > .ptr-indicator, .stats-month-nav, .stats-type-toggle,
+  .stats-exclude-row, .stats-total { grid-column: 1 / -1; }
+  .donut-wrap { grid-column: 1; }
+  .cat-rank-list { grid-column: 2; align-self: start; }
+
+  /* --- 검색/관리/입력 패널: 가운데 + 적당한 폭(전체폭 방지) --- */
+  .search-panel { left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: var(--cal-max); }
+  .cat-mgmt-panel, .asset-input-panel, .loan-edit-panel {
+    left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: 640px;
   }
-  /* 바텀시트 / 하단 저장바를 열 폭에 맞춰 가운데 */
-  .bottom-sheet, .asset-input-save-bar, .loan-edit-save-bar {
-    left: 50%; right: auto; width: 100%; max-width: var(--app-max);
+  .asset-input-save-bar, .loan-edit-save-bar {
+    left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: 640px;
   }
-  .bottom-sheet { transform: translateX(-50%) translateY(100%); }
+
+  /* --- 바텀시트: 가운데 다이얼로그 폭(슬라이드업 유지) --- */
+  .bottom-sheet { left: 50%; right: auto; width: 100%; max-width: var(--sheet-max); transform: translateX(-50%) translateY(100%); }
   .bottom-sheet.visible { transform: translateX(-50%) translateY(0); }
-  .asset-input-save-bar, .loan-edit-save-bar { transform: translateX(-50%); }
-  /* 항목 추가 모달(아래서 올라오는 박스)도 가운데·폭 제한 */
   .add-asset-modal { justify-content: center; }
-  .add-asset-box { max-width: var(--app-max); }
-  /* FAB: 열 오른쪽 안쪽에 고정 */
-  .fab { right: calc(50% - var(--app-max) / 2 + 20px); }
-  /* 상단 업데이트 배너도 열 폭에 맞춤 */
-  .update-banner { left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: var(--app-max); }
+  .add-asset-box { max-width: var(--sheet-max); }
+
+  /* --- 상단 업데이트 배너 --- */
+  .update-banner { left: 50%; right: auto; transform: translateX(-50%); width: 100%; max-width: var(--content-max); }
 }
 </style>
 </head>
