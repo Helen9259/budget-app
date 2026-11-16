@@ -1,5 +1,5 @@
 // /api/transactions/* — 거래 내역 CRUD, 검색, CSV 내보내기
-const { makeApp, supabase, requireAppToken } = require('../lib/common');
+const { makeApp, supabase, requireAppToken, fetchAllRows } = require('../lib/common');
 
 const app = makeApp();
 
@@ -59,10 +59,11 @@ app.get('/api/transactions/search', requireAppToken, async (req, res) => {
 });
 
 app.get('/api/transactions/export', requireAppToken, async (req, res) => {
-  const { data, error } = await supabase
-    .from('transactions').select('*')
-    .order('date', { ascending: true })
-    .order('created_at', { ascending: true });
+  // Supabase 기본 1,000행 제한을 넘겨 전체 거래를 페이지네이션으로 가져옴
+  const { data, error } = await fetchAllRows(() =>
+    supabase.from('transactions').select('*')
+      .order('date', { ascending: true })
+      .order('created_at', { ascending: true }));
 
   if (error) return res.status(500).json({ error: error.message });
 
