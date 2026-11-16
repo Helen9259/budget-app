@@ -2778,6 +2778,7 @@ function goToSearchByCat(catName) {
 // =============================================
 const schState = { cat: '', payment: '' };
 let _schDebounce = null;
+let _searchResults = [];   // 마지막 검색 결과 (검색 화면에서 직접 편집/삭제용)
 
 function openSearch() {
   // 열 때마다 필터 초기화 (통계에서 진입 시 goToSearchByCat 이 이후에 다시 설정함)
@@ -2864,6 +2865,7 @@ async function doSearch() {
 }
 
 function renderSearchResults(txs) {
+  _searchResults = txs || [];
   const infoEl = document.getElementById('sch-result-info');
   const resultEl = document.getElementById('sch-results');
   infoEl.textContent = `검색 결과 ${txs.length}건`;
@@ -2901,6 +2903,7 @@ function renderSearchResults(txs) {
         <div class="tx-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}</div>
         <div class="tx-actions">
           <button class="tx-act-btn" onclick="openEditFromSearch('${t.id}')">✏️</button>
+          <button class="tx-act-btn" onclick="confirmDelete('tx','${t.id}')">🗑️</button>
         </div>`;
       txList.appendChild(el);
     });
@@ -2909,18 +2912,10 @@ function renderSearchResults(txs) {
   });
 }
 
-async function openEditFromSearch(id) {
-  // load the transaction's month if needed
-  try {
-    const res = await api('GET', `/api/transactions/search?q=`);
-  } catch {}
-  // fetch all transactions for that month by temporarily searching
-  closeSearch();
-  // find in current state first
-  let t = state.transactions.find(x => x.id === id);
-  if (t) { openEditForm(id); return; }
-  // if not in current month, load that month
-  showToast('해당 내역을 열려면 해당 월로 이동하세요.');
+function openEditFromSearch(id) {
+  const t = _searchResults.find(x => String(x.id) === String(id));
+  if (!t) { showToast('내역을 찾을 수 없어요.'); return; }
+  openEditTx(t, true);   // 폼이 검색 화면 위에 열림 (검색은 뒤에 유지)
 }
 
 function showSubTab(tab) {
@@ -3212,8 +3207,13 @@ function openAddFormFromDetail() { closeDetailSheet(); openAddForm(); document.g
 function openEditForm(id) {
   const t = state.transactions.find(x => x.id === id);
   if (!t) return;
+  openEditTx(t);
+}
+// 트랜잭션 객체로 직접 편집 폼 채우기 (현재 월에 없는 검색 결과도 편집 가능)
+function openEditTx(t, fromSearch = false) {
   closeDetailSheet();
-  state.editingId = id;
+  state.editingId = t.id;
+  state.editingFromSearch = fromSearch;
   document.getElementById('form-title').textContent = '내역 수정';
   resetTxForm();
   setFormType(t.type);
@@ -3385,6 +3385,8 @@ async function saveTransaction() {
     closeFormSheet();
     await Promise.all([loadMonth(), loadCardUsage()]);
     renderCardSummary();
+    // 검색 결과에서 편집한 경우 검색도 갱신
+    if (state.editingFromSearch) { state.editingFromSearch = false; if (document.getElementById('search-panel').classList.contains('visible')) doSearch(); }
   } catch (e) { showToast(e.message); }
 }
 
@@ -3918,6 +3920,7 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
       closeConfirm(); closeDetailSheet();
       await Promise.all([loadMonth(), loadCardUsage()]);
       renderCardSummary();
+      if (document.getElementById('search-panel').classList.contains('visible')) doSearch();
       showToast('삭제되었습니다.');
     } else if (type === 'fixed') {
       await api('DELETE', `/api/fixed-expenses/${id}`);
