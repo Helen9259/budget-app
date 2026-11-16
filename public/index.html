@@ -1683,7 +1683,6 @@ async function api(method, path, body, _retry = true, _attempt = 1) {
   const appToken = localStorage.getItem('app_token');
   if (appToken) opts.headers['Authorization'] = `Bearer ${appToken}`;
   if (body) opts.body = JSON.stringify(body);
-  console.log(`[API] ${method} ${path} (attempt ${_attempt})`);
 
   let res;
   try {
@@ -1697,8 +1696,6 @@ async function api(method, path, body, _retry = true, _attempt = 1) {
     }
     throw new Error('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
   }
-
-  console.log(`[API] ${method} ${path} → ${res.status}`);
 
   if (res.status === 401 && _retry) {
     console.warn('[AUTH] 401 수신 → 로그아웃');
@@ -4705,10 +4702,8 @@ if ('serviceWorker' in navigator) {
   document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
   if (localStorage.getItem('app_token')) {
-    console.log('[INIT] 저장된 세션 확인 → 앱 진입');
     enterApp();
   } else {
-    console.log('[INIT] 세션 없음 → 비밀번호 입력 화면');
     showLoginScreen();
   }
 })();

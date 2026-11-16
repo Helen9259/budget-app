@@ -1,5 +1,6 @@
 // /api/budgets — 월 예산 조회/저장
-//   category='__total__' 행은 전체 예산, 그 외는 카테고리별 한도.
+//   각 행은 카테고리별 한도. 전체 예산은 프론트에서 카테고리 합계로 자동 계산한다.
+//   (과거 '__total__' 행은 더 이상 쓰지 않으며, buildBudgetMap에서 무시된다.)
 const { makeApp, supabase, requireAppToken } = require('../lib/common');
 
 const app = makeApp();
